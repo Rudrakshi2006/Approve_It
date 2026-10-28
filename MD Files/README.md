@@ -94,10 +94,13 @@ No URL is hard-coded in the source. Moving to `*.eklink.clg.edu.in` is a configu
 
 ### Database
 
-1. Run the SQL in `supabase/migrations/` (schema in `planning.md` §10). Row Level Security is enabled on every table with no policies; only the server uses the service key.
-2. Create **private** Storage buckets for attachments and signatures.
-3. Pre-seed `people` from the CSV the EkLink admin imported (`login_id, name, college_email, role, department`), so approvers and faculty exist before their first login.
-4. Seed `application_types` (chains) and the initial `app_roles` / `approver_assignments`.
+1. Open your Supabase project dashboard → **SQL Editor**. Copy and run `supabase/migrations/0001_people_and_roles.sql`. Row Level Security (RLS) is enabled on all tables with no policies; all permissions are revoked from `anon` and `authenticated`, meaning only the server with `SUPABASE_SECRET_KEY` can access data.
+2. In your terminal, run the idempotent pre-seed script:
+   ```bash
+   npm run seed:people -- --yes
+   ```
+   This reads `supabase/seed/people.dummy.csv` and `supabase/seed/app_roles.dummy.csv` using `.env.local` credentials and seeds initial faculty, staff, HOD, director, students, and admin roles without overwriting existing data.
+3. Private Storage buckets for attachments and signatures will be configured in Phase 2/3.
 
 ## Deployment
 
