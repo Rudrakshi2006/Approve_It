@@ -8,7 +8,8 @@
     "start": "next start -p 3002",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "seed:people": "tsx --env-file=.env.local scripts/seed-people.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
