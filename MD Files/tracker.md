@@ -2,8 +2,8 @@
 
 **How to use:** tick tasks as they are finished (`- [x]`), add a changelog line, and record EkLink test results in §3. Antigravity must update this file after every task (see `rules.md` §0).
 
-**Current phase:** 0, Setup
-**Overall status:** Planning complete. Development not started.
+**Current phase:** 0, Setup (scaffold & repo setup complete; awaiting developer setup)
+**Overall status:** Phase 0 code tasks complete.
 **Last updated:** 2026-10-28
 
 ---
@@ -11,15 +11,15 @@
 ## 1. Phase checklist
 
 ### Phase 0, Setup
-- [ ] Create repo; add `rules.md`, `planning.md`, `tracker.md`, `README.md`
-- [ ] Add `docs/EkLink-Integration-ApproveIt.md` to the repo
-- [ ] `.gitignore` covers `.env*` from the first commit
-- [ ] `.env.example` lists every variable (no values)
+- [x] Create repo; add `rules.md`, `planning.md`, `tracker.md`, `README.md`
+- [x] Add `docs/EkLink-Integration-ApproveIt.md` to the repo (stored in `MD Files/`)
+- [x] `.gitignore` covers `.env*` from the first commit
+- [x] `.env.example` lists every variable (no values)
 - [ ] Create Supabase project (RLS on for every table)
 - [ ] Create Vercel project (one stable production URL)
 - [ ] Send registration details to the EkLink admin (slug `approveit`, name, URL, callbacks, roles, icon `stamp`, description)
 - [ ] Receive `client_id` and `client_secret`; store straight into Vercel env settings (never in chat or Git)
-- [ ] Set local dev port 3002 and local callback `http://localhost:3002/auth/callback`
+- [x] Set local dev port 3002 and local callback `http://localhost:3002/auth/callback`
 
 ### Phase 1, Auth & people
 - [ ] `src/lib/eklink.ts` (JWKS verify, code exchange, refresh)
@@ -142,18 +142,25 @@ Fill in with the EkLink admin. Result: `Pass` / `Fail` / `-` (not run).
 | 2026-10-28 | No faculty-leave or delegation handling. |
 | 2026-10-28 | Final PDF export built in phase 5. |
 | 2026-10-28 | Stack: Next.js App Router, Supabase, `jose`. Built with Antigravity. |
+| 2026-10-28 | Phases follow planning/tracker (Phase 0 to 6). |
+| 2026-10-28 | Approval chains configured in `application_types.chain` (JSON); no separate workflows table. |
+| 2026-10-28 | `exam_cell` added to `app_roles.app_role` alongside `admin_staff`, `workflow_admin`. |
+| 2026-10-28 | General application chain = Class teacher → HOD (configurable data change). |
+| 2026-10-28 | Up to 10 attachments for every application type (PDF/JPG/PNG, 5 MB each). |
+| 2026-10-28 | Project documentation centralized in `MD Files/`. |
+| 2026-10-28 | Installed Next.js version 16.4.3 (App Router, uses `proxy.ts`). |
 
 ## 5. Open questions
 
 | # | Question | Owner | Status |
 |---|---|---|---|
-| 1 | General application chain (default Class teacher → HOD) | Developer | Open |
+| 1 | General application chain (default Class teacher → HOD) | Developer | Resolved (Class teacher → HOD, configurable) |
 | 2 | Semester: derive from `batch` or student-confirmed? | Developer | Open |
 | 3 | Hack-o-week incharge: global or per event? | Developer | Open |
 | 4 | Who are Admin staff and Exam cell `login_id`s? | Developer / college | Open |
 | 5 | Get the EkLink CSV (`login_id, name, college_email, role, department`) | EkLink admin | Open |
 | 6 | Final production URL and role list | Developer / EkLink admin | Open |
-| 7 | File limits (10 files, 5 MB, PDF/JPG/PNG) | Developer / college | Open |
+| 7 | File limits (10 files decided; 5 MB, PDF/JPG/PNG to confirm with college) | Developer / college | Decided (10 files; limits to confirm) |
 | 8 | HOD resolution when a department has none or several HODs | Developer | Open |
 
 ## 6. Changelog
@@ -161,3 +168,4 @@ Fill in with the EkLink admin. Result: `Pass` / `Fail` / `-` (not run).
 | Date | Change |
 |---|---|
 | 2026-10-28 | Planning done. Created `rules.md`, `planning.md`, `tracker.md`, `README.md`. |
+| 2026-10-28 | Phase 0 scaffold: Next.js 16.4.3, dependencies, .gitignore, .env.example, scripts, vitest config, smoke test, placeholder home page. |
