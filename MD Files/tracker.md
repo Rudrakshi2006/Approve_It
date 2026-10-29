@@ -51,11 +51,11 @@
 - [x] API tests: unauthenticated `401`, wrong user `403`
 
 ### Phase 3, Thread, hold, withdraw, signature
-- [ ] `application_messages` thread (single chronological log)
-- [ ] Return (hold) → student edits and resubmits into the same application
-- [ ] Withdraw (applicant only, while `in_review` or `returned`)
-- [ ] Profile page: semester confirm, optional signature upload (private bucket)
-- [ ] Stamp includes signature when present
+- [x] `application_messages` thread (single chronological log)
+- [x] Return (hold) → student edits and resubmits into the same application
+- [x] Withdraw (applicant only, while `in_review` or `returned`)
+- [x] Profile page: semester confirm, optional signature upload (private bucket)
+- [x] Stamp includes signature when present
 
 ### Phase 4, Other types
 - [ ] Hackathon chain (admin forward-only → incharge → HOD → director)
@@ -172,3 +172,4 @@ Fill in with the EkLink admin. Result: `Pass` / `Fail` / `-` (not run).
 | 2026-10-28 | Phase 1 auth & people: env validation, eklink JWKS client, 8h sessions, auth routes (/login, /callback, /refresh, /logout, /error), proxy.ts, auth guards, migration 0001, dummy CSV seed script, security headers, and 33 automated tests. |
 | 2026-10-29 | Phase 1 verified and merged to main (tagged `phase-1-done`). Branch `phase-2-medical` created for Medical flow. |
 | 2026-10-29 | Phase 2 medical flow: migration 0002, 5-kind approver resolver, transitions engine, atomic rpc transition, student dashboard & apply form, approver inbox & review screen, digital stamp (AP-XXXX-XXXX), attachments upload with magic bytes check, and 65 unit tests. |
+| 2026-10-29 | Phase 3 thread, return/resubmit, withdraw, signature: migration 0003, unified chronological timeline, thread messages API, return-edit UI, resubmit (A9), withdraw (A10), /profile with semester confirm and approver digital signature upload, stamp signature embedding, and 73 unit tests. |
