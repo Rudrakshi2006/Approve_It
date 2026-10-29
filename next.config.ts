@@ -12,9 +12,14 @@ function getCspHeader(): string {
   const imgSrc = ["'self'", "data:", "blob:", supabaseHost].filter(Boolean).join(" ");
   const formAction = ["'self'", eklinkOrigin].filter(Boolean).join(" ");
 
+  const isDev = process.env.NODE_ENV !== "production";
+  const scriptSrc = isDev
+    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" // 'unsafe-eval' enabled only for Next/React dev tools
+    : "script-src 'self' 'unsafe-inline'"; // Strict for production
+
   return [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'", // 'unsafe-inline' permitted for Next.js hydration with tracker note
+    scriptSrc,
     "style-src 'self' 'unsafe-inline'",
     `img-src ${imgSrc}`,
     `connect-src ${connectSrc}`,
