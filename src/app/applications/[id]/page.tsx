@@ -2,9 +2,13 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { requirePageSession } from "@/lib/auth";
 import { getApplicationById } from "@/lib/repos/applications";
+import { getDb } from "@/lib/db";
 import { formatToIST } from "@/lib/date";
-import { VerifiedStamp } from "@/components/VerifiedStamp";
+import { buildUnifiedTimeline } from "@/lib/thread";
+import { createSignatureSignedUrl } from "@/lib/signature";
 import { AttachmentItem } from "./AttachmentItem";
+import { ReturnedEditActions, WithdrawOnlyAction } from "./ReturnedEditActions";
+import { UnifiedThread } from "@/components/UnifiedThread";
 
 export default async function ApplicationStatusPage(props: {
   params: Promise<{ id: string }>;
@@ -14,18 +18,36 @@ export default async function ApplicationStatusPage(props: {
 
   const app = await getApplicationById(id);
 
-  // If application doesn't exist, return 404
   if (!app) {
     notFound();
   }
 
-  // Authorization check: only the applicant can view this student tracking view
-  // (Approvers view through /inbox/[id])
+  // Authorization check: only applicant can view this student tracking view
   if (app.applicant_login_id !== session.login_id) {
     notFound();
   }
 
   const steps = app.chain_snapshot;
+  const db = getDb();
+
+  // Load thread messages
+  const { data: messages } = await db
+    .from("application_messages")
+    .select("*")
+    .eq("application_id", app.id)
+    .order("created_at", { ascending: true });
+
+  // Generate signed URLs for approver signatures
+  const signatureUrls: Record<string, string> = {};
+  for (const step of app.steps) {
+    if (step.signature_path && !signatureUrls[step.signature_path]) {
+      const url = await createSignatureSignedUrl(step.signature_path);
+      if (url) signatureUrls[step.signature_path] = url;
+    }
+  }
+
+  const timeline = buildUnifiedTimeline(app.steps, messages || [], app.attachments);
+  const canReply = app.status === "in_review" || app.status === "returned";
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-16">
@@ -38,14 +60,33 @@ export default async function ApplicationStatusPage(props: {
           >
             ← Back to My Applications
           </Link>
-          <span className="text-xs bg-slate-100 text-slate-600 font-mono px-2 py-0.5 rounded">
-            ID: {app.id.slice(0, 8)}...
-          </span>
+          <div className="flex items-center gap-3">
+            {app.status === "in_review" && (
+              <WithdrawOnlyAction applicationId={app.id} />
+            )}
+            <span className="text-xs bg-slate-100 text-slate-600 font-mono px-2 py-0.5 rounded">
+              ID: {app.id.slice(0, 8)}...
+            </span>
+          </div>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8">
-        {/* Status Banner */}
+        {/* Returned Action Banner & Edit Controls */}
+        {app.status === "returned" && (
+          <ReturnedEditActions
+            applicationId={app.id}
+            initialSubject={app.subject}
+            initialComment={(app.payload?.comment as string) || ""}
+            attachments={app.attachments.map((a) => ({
+              id: a.id,
+              original_name: a.original_name,
+              size_bytes: a.size_bytes,
+            }))}
+          />
+        )}
+
+        {/* Status Card */}
         <div className="bg-white border border-slate-200 rounded-lg p-6 mb-6 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
             <div>
@@ -88,6 +129,11 @@ export default async function ApplicationStatusPage(props: {
                   ↩ Returned for Correction
                 </div>
               )}
+              {app.status === "cancelled" && (
+                <div className="bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-md text-xs font-bold">
+                  Withdrawn / Cancelled
+                </div>
+              )}
             </div>
           </div>
 
@@ -100,8 +146,7 @@ export default async function ApplicationStatusPage(props: {
               {steps.map((step, idx) => {
                 const isCompleted =
                   app.status === "approved" ||
-                  idx < app.current_step ||
-                  (app.status === "in_review" && idx < app.current_step);
+                  idx < app.current_step;
                 const isCurrent = app.status === "in_review" && idx === app.current_step;
                 const isPending = idx > app.current_step;
 
@@ -140,7 +185,7 @@ export default async function ApplicationStatusPage(props: {
           </div>
         </div>
 
-        {/* Applicant Snapshot & Additional Info */}
+        {/* Applicant Snapshot & Attachments */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div className="md:col-span-1 bg-white border border-slate-200 rounded-lg p-5">
             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
@@ -156,13 +201,13 @@ export default async function ApplicationStatusPage(props: {
                 <span className="font-mono text-slate-800">{app.applicant_snapshot.login_id}</span>
               </div>
               <div>
-                <span className="text-slate-400 block">Department & Batch</span>
+                <span className="text-slate-400 block">Department &amp; Batch</span>
                 <span className="text-slate-800">
                   {app.applicant_snapshot.department} • {app.applicant_snapshot.batch || "2024-28"}
                 </span>
               </div>
               <div>
-                <span className="text-slate-400 block">Semester & Section</span>
+                <span className="text-slate-400 block">Semester &amp; Section</span>
                 <span className="text-slate-800">
                   Semester {app.applicant_snapshot.semester || 1} (Sec {app.applicant_snapshot.section || "A"})
                 </span>
@@ -170,7 +215,6 @@ export default async function ApplicationStatusPage(props: {
             </div>
           </div>
 
-          {/* Attachments List */}
           <div className="md:col-span-2 bg-white border border-slate-200 rounded-lg p-5">
             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
               Attached Documents ({app.attachments.length})
@@ -193,47 +237,13 @@ export default async function ApplicationStatusPage(props: {
           </div>
         </div>
 
-        {/* History / Audit Log with Digital Verification Stamps */}
-        <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">
-            Application History & Verification Stamps
-          </h3>
-
-          <div className="space-y-6">
-            {app.steps.map((step) => (
-              <div
-                key={step.id}
-                className="border-l-2 border-slate-200 pl-4 py-1 relative space-y-1.5"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                    {step.decision}
-                  </span>
-                  <span className="text-xs text-slate-500">by {step.actor_login_id}</span>
-                  <span className="text-xs text-slate-400">• {formatToIST(step.at)}</span>
-                </div>
-
-                {step.comment && (
-                  <p className="text-xs bg-slate-50 border border-slate-100 p-2.5 rounded text-slate-800">
-                    &ldquo;{step.comment}&rdquo;
-                  </p>
-                )}
-
-                {/* Digital Verification Stamp */}
-                {step.verification_id && (
-                  <div className="mt-2">
-                    <VerifiedStamp
-                      name={step.actor_login_id}
-                      designation={step.step_key}
-                      verificationId={step.verification_id}
-                      timestamp={step.at}
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Unified Timeline & Discussion Thread */}
+        <UnifiedThread
+          applicationId={app.id}
+          timeline={timeline}
+          canReply={canReply}
+          signatureUrls={signatureUrls}
+        />
       </main>
     </div>
   );

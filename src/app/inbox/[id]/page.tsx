@@ -2,10 +2,13 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { requirePageSession } from "@/lib/auth";
 import { getApplicationById } from "@/lib/repos/applications";
+import { getDb } from "@/lib/db";
 import { formatToIST } from "@/lib/date";
-import { VerifiedStamp } from "@/components/VerifiedStamp";
+import { buildUnifiedTimeline } from "@/lib/thread";
+import { createSignatureSignedUrl } from "@/lib/signature";
 import { AttachmentItem } from "@/app/applications/[id]/AttachmentItem";
 import { ReviewActions } from "./ReviewActions";
+import { UnifiedThread } from "@/components/UnifiedThread";
 
 export default async function ApproverReviewPage(props: {
   params: Promise<{ id: string }>;
@@ -30,6 +33,27 @@ export default async function ApproverReviewPage(props: {
   if (!isCurrentApprover && !hasParticipated) {
     notFound();
   }
+
+  const db = getDb();
+
+  // Load thread messages
+  const { data: messages } = await db
+    .from("application_messages")
+    .select("*")
+    .eq("application_id", app.id)
+    .order("created_at", { ascending: true });
+
+  // Generate signed URLs for approver signatures
+  const signatureUrls: Record<string, string> = {};
+  for (const step of app.steps) {
+    if (step.signature_path && !signatureUrls[step.signature_path]) {
+      const url = await createSignatureSignedUrl(step.signature_path);
+      if (url) signatureUrls[step.signature_path] = url;
+    }
+  }
+
+  const timeline = buildUnifiedTimeline(app.steps, messages || [], app.attachments);
+  const canReply = app.status === "in_review" || app.status === "returned";
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-16">
@@ -89,6 +113,11 @@ export default async function ApproverReviewPage(props: {
                   ↩ Returned
                 </div>
               )}
+              {app.status === "cancelled" && (
+                <div className="bg-slate-100 border border-slate-300 text-slate-700 px-4 py-2 rounded-md text-xs font-bold">
+                  Withdrawn / Cancelled
+                </div>
+              )}
             </div>
           </div>
 
@@ -122,7 +151,7 @@ export default async function ApproverReviewPage(props: {
           </div>
         </div>
 
-        {/* Action Box (Only if user is current approver and application is in review) */}
+        {/* Action Box */}
         {isCurrentApprover && app.status === "in_review" ? (
           <div className="mb-6">
             <ReviewActions applicationId={app.id} />
@@ -155,46 +184,13 @@ export default async function ApproverReviewPage(props: {
           )}
         </div>
 
-        {/* Previous Steps and Verification Stamps */}
-        <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">
-            Audit Trail &amp; Verification Stamps
-          </h3>
-
-          <div className="space-y-5">
-            {app.steps.map((step) => (
-              <div
-                key={step.id}
-                className="border-l-2 border-slate-200 pl-4 py-1 relative space-y-1.5"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                    {step.decision}
-                  </span>
-                  <span className="text-xs text-slate-600 font-medium">by {step.actor_login_id}</span>
-                  <span className="text-xs text-slate-400">• {formatToIST(step.at)}</span>
-                </div>
-
-                {step.comment && (
-                  <p className="text-xs bg-slate-50 border border-slate-100 p-2.5 rounded text-slate-800">
-                    &ldquo;{step.comment}&rdquo;
-                  </p>
-                )}
-
-                {step.verification_id && (
-                  <div className="mt-2">
-                    <VerifiedStamp
-                      name={step.actor_login_id}
-                      designation={step.step_key}
-                      verificationId={step.verification_id}
-                      timestamp={step.at}
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Unified Timeline & Discussion Thread */}
+        <UnifiedThread
+          applicationId={app.id}
+          timeline={timeline}
+          canReply={canReply}
+          signatureUrls={signatureUrls}
+        />
       </main>
     </div>
   );
