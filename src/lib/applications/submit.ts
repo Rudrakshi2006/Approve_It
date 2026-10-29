@@ -6,6 +6,7 @@ import {
   type ApproverResolutionContext,
 } from "@/lib/workflow/resolve-approver";
 import { calculateSuggestedSemester } from "@/lib/semester";
+import { createNotification } from "@/lib/notifications";
 import type { ApplicantSnapshot } from "@/lib/repos/types";
 import type { Session } from "@/lib/session";
 
@@ -170,6 +171,15 @@ export async function submitApplication(
       urgent: finalUrgent,
       chain_snapshot: chain,
       initial_approver_login_id: initialApproverLoginId,
+    });
+
+    // Notify initial approver
+    const urgentPrefix = finalUrgent ? "⚡ URGENT: " : "";
+    await createNotification({
+      recipient_login_id: initialApproverLoginId,
+      application_id: app.id,
+      kind: "submitted",
+      message: `${urgentPrefix}New ${input.type.replace("_", " ")} application from ${applicantSnapshot.name} (${applicantSnapshot.login_id}): "${input.subject}"`,
     });
 
     // 6. Link attachments if any

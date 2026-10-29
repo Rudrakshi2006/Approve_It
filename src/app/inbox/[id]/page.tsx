@@ -99,15 +99,24 @@ export default async function ApproverReviewPage(props: {
               </p>
             </div>
 
-            <div className="shrink-0">
+            <div className="shrink-0 flex items-center gap-2.5">
               {app.status === "in_review" && (
                 <div className="bg-amber-50 border border-amber-200 text-amber-900 px-3 py-1.5 rounded-md text-xs font-semibold">
                   Pending Decision (Step {app.current_step + 1} of {app.chain_snapshot.length})
                 </div>
               )}
               {app.status === "approved" && (
-                <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 px-4 py-2 rounded-md text-xs font-bold">
-                  ✓ Approved
+                <div className="flex items-center gap-2.5">
+                  <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 px-3.5 py-1.5 rounded-md text-xs font-bold">
+                    ✓ Approved
+                  </div>
+                  <a
+                    href={`/api/applications/${app.id}/pdf`}
+                    download
+                    className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-md shadow-sm transition"
+                  >
+                    📄 Download PDF
+                  </a>
                 </div>
               )}
               {app.status === "rejected" && (

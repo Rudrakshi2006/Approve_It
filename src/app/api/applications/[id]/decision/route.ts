@@ -13,6 +13,7 @@ import {
   type ApproverResolutionContext,
 } from "@/lib/workflow/resolve-approver";
 import { generateVerificationId } from "@/lib/stamp/verification-id";
+import { createNotification } from "@/lib/notifications";
 
 const DecisionSchema = z.object({
   action: z.enum(["approve", "reject", "return", "forward"]),
@@ -189,6 +190,61 @@ export async function POST(
       { error: result.error || "Database transition failed" },
       { status: 500 }
     );
+  }
+
+  // 7. Dispatch lifecycle notifications
+  const urgentPrefix = app.urgent ? "⚡ URGENT: " : "";
+  if (action === "approve") {
+    if (transition.new_status === "approved") {
+      await createNotification({
+        recipient_login_id: app.applicant_login_id,
+        application_id: app.id,
+        kind: "approved",
+        message: `🎉 Your application "${app.subject}" has been fully approved!`,
+      });
+    } else if (nextApproverLoginId) {
+      await createNotification({
+        recipient_login_id: nextApproverLoginId,
+        application_id: app.id,
+        kind: "forwarded",
+        message: `${urgentPrefix}Application "${app.subject}" forwarded to you by ${session.name}`,
+      });
+      await createNotification({
+        recipient_login_id: app.applicant_login_id,
+        application_id: app.id,
+        kind: "forwarded",
+        message: `Your application "${app.subject}" was approved by ${session.name} and forwarded to the next reviewer.`,
+      });
+    }
+  } else if (action === "forward") {
+    if (nextApproverLoginId) {
+      await createNotification({
+        recipient_login_id: nextApproverLoginId,
+        application_id: app.id,
+        kind: "forwarded",
+        message: `${urgentPrefix}Application "${app.subject}" verified & forwarded to you by ${session.name}`,
+      });
+      await createNotification({
+        recipient_login_id: app.applicant_login_id,
+        application_id: app.id,
+        kind: "forwarded",
+        message: `Your application "${app.subject}" attendance was verified by ${session.name} and forwarded to Hackathon Incharge.`,
+      });
+    }
+  } else if (action === "reject") {
+    await createNotification({
+      recipient_login_id: app.applicant_login_id,
+      application_id: app.id,
+      kind: "rejected",
+      message: `Your application "${app.subject}" was rejected by ${session.name}: "${comment || 'No reason provided'}"`,
+    });
+  } else if (action === "return") {
+    await createNotification({
+      recipient_login_id: app.applicant_login_id,
+      application_id: app.id,
+      kind: "returned",
+      message: `Your application "${app.subject}" was returned for revision by ${session.name}: "${comment || 'Please update'}"`,
+    });
   }
 
   return NextResponse.json({

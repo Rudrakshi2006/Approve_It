@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requirePageSession } from "@/lib/auth";
 import { listInboxForApprover } from "@/lib/repos/applications";
 import { formatToIST } from "@/lib/date";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export default async function InboxPage(props: {
   searchParams: Promise<{ tab?: string }>;
@@ -36,6 +37,8 @@ export default async function InboxPage(props: {
           </div>
 
           <div className="flex items-center gap-4 text-sm">
+            <NotificationBell loginId={session.login_id} />
+
             <div className="text-right">
               <p className="font-semibold text-slate-900">{session.name}</p>
               <p className="text-xs text-slate-500 font-mono">
@@ -152,8 +155,8 @@ export default async function InboxPage(props: {
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2">
                         {app.urgent && (
-                          <span className="bg-rose-100 text-rose-700 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase">
-                            Urgent
+                          <span className="bg-rose-100 text-rose-700 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase flex items-center gap-1">
+                            ⚡ Urgent
                           </span>
                         )}
                         <span className="font-medium text-slate-900">{app.subject}</span>
@@ -174,26 +177,26 @@ export default async function InboxPage(props: {
                       )}
                       {app.status === "approved" && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
-                          Approved
+                          ✓ Approved
                         </span>
                       )}
                       {app.status === "rejected" && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800">
-                          Rejected
+                          ✕ Rejected
                         </span>
                       )}
                       {app.status === "returned" && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800">
-                          Returned
+                          ↩ On Hold
                         </span>
                       )}
                     </td>
                     <td className="px-5 py-4 text-right">
                       <Link
                         href={`/inbox/${app.id}`}
-                        className="inline-block bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-3 py-1.5 rounded transition"
+                        className="text-xs font-bold text-slate-900 hover:text-slate-700 hover:underline"
                       >
-                        Review →
+                        Review &amp; Verify →
                       </Link>
                     </td>
                   </tr>

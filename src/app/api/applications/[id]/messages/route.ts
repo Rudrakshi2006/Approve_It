@@ -4,6 +4,7 @@ import { requireApiSession } from "@/lib/auth";
 import { SESSION_COOKIE } from "@/lib/session";
 import { getDb } from "@/lib/db";
 import { getApplicationById } from "@/lib/repos/applications";
+import { createNotification } from "@/lib/notifications";
 
 const MessageSchema = z.object({
   body: z
@@ -66,13 +67,15 @@ export async function POST(
     );
   }
 
+  const cleanBody = parseResult.data.body.trim();
+
   const db = getDb();
   const { data: newMsg, error: insertError } = await db
     .from("application_messages")
     .insert({
       application_id: app.id,
       author_login_id: session.login_id,
-      body: parseResult.data.body.trim(),
+      body: cleanBody,
     })
     .select()
     .single();
@@ -82,6 +85,18 @@ export async function POST(
       { error: `Failed to post message: ${insertError?.message || "Unknown error"}` },
       { status: 500 }
     );
+  }
+
+  // 3. Notify the other party
+  const notifyRecipient = isApplicant ? app.current_approver_login_id : app.applicant_login_id;
+  if (notifyRecipient) {
+    const preview = cleanBody.length > 60 ? cleanBody.slice(0, 60) + "..." : cleanBody;
+    await createNotification({
+      recipient_login_id: notifyRecipient,
+      application_id: app.id,
+      kind: "comment",
+      message: `New note on "${app.subject}" from ${session.name}: "${preview}"`,
+    });
   }
 
   return NextResponse.json(newMsg, { status: 201 });

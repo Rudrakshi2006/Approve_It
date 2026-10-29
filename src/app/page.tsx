@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requirePageSession } from "@/lib/auth";
 import { listApplicationsByApplicant } from "@/lib/repos/applications";
 import { formatToIST } from "@/lib/date";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export default async function HomePage(props: {
   searchParams: Promise<{ type?: string }>;
@@ -77,6 +78,7 @@ export default async function HomePage(props: {
           </div>
 
           <div className="flex items-center gap-4 text-sm">
+            <NotificationBell loginId={session.login_id} />
             <div className="text-right">
               <p className="font-semibold text-slate-900">{session.name}</p>
               <p className="text-xs text-slate-500 font-mono">

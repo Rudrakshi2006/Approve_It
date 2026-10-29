@@ -8,6 +8,7 @@ import {
   resolveApprover,
   type ApproverResolutionContext,
 } from "@/lib/workflow/resolve-approver";
+import { createNotification } from "@/lib/notifications";
 
 const ResubmitSchema = z.object({
   comment: z.string().max(2000).optional().nullable(),
@@ -27,17 +28,38 @@ export async function POST(
   const { session } = auth;
   const { id } = await context.params;
 
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    body = {};
+  }
+
+  const parseResult = ResubmitSchema.safeParse(body);
+  if (!parseResult.success) {
+    return NextResponse.json(
+      { error: parseResult.error.issues[0]?.message || "Validation failed" },
+      { status: 422 }
+    );
+  }
+
+  const { comment } = parseResult.data;
+
+  // 1. Fetch application details
   const app = await getApplicationById(id);
   if (!app) {
     return NextResponse.json({ error: "Application not found" }, { status: 404 });
   }
 
-  // 1. Applicant only
+  // 2. Only applicant can resubmit
   if (app.applicant_login_id !== session.login_id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json(
+      { error: "Forbidden: Only the original applicant can resubmit this application" },
+      { status: 403 }
+    );
   }
 
-  // 2. Allowed ONLY while returned (Test A9)
+  // 3. Application MUST be in status 'returned' (hold)
   if (app.status !== "returned") {
     return NextResponse.json(
       { error: `Cannot resubmit application with status '${app.status}' (must be 'returned')` },
@@ -45,23 +67,10 @@ export async function POST(
     );
   }
 
-  let body: unknown = {};
-  try {
-    body = await request.json();
-  } catch {
-    // Body is optional
-  }
-
-  const parsed = ResubmitSchema.safeParse(body);
-  const comment = parsed.success && parsed.data.comment ? parsed.data.comment.trim() : null;
-
-  // 3. Re-resolve approver for current step
-  const currentStepConfig = app.chain_snapshot[app.current_step];
-  if (!currentStepConfig) {
-    return NextResponse.json({ error: "Invalid workflow step" }, { status: 500 });
-  }
-
   const db = getDb();
+  const currentStepConfig = app.chain_snapshot[app.current_step];
+
+  // Resolve approver for this returned step
   const resolutionContext: ApproverResolutionContext = {
     async findPersonsByRoleAndDept(role: string, department: string) {
       const { data } = await db
@@ -101,7 +110,7 @@ export async function POST(
     },
   };
 
-  let assignedApprover: string;
+  let assignedApprover: string | null = null;
   try {
     assignedApprover = await resolveApprover(
       currentStepConfig.resolver,
@@ -114,7 +123,7 @@ export async function POST(
       resolutionContext
     );
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Approver resolution failed";
+    const msg = err instanceof Error ? err.message : "Failed to resolve approver";
     return NextResponse.json({ error: msg }, { status: 422 });
   }
 
@@ -150,6 +159,17 @@ export async function POST(
 
   if (stepErr) {
     return NextResponse.json({ error: stepErr.message }, { status: 500 });
+  }
+
+  // 6. Notify the designated approver
+  if (assignedApprover) {
+    const urgentPrefix = app.urgent ? "⚡ URGENT: " : "";
+    await createNotification({
+      recipient_login_id: assignedApprover,
+      application_id: app.id,
+      kind: "resubmitted",
+      message: `${urgentPrefix}Application "${app.subject}" was revised and resubmitted by ${session.name}`,
+    });
   }
 
   return NextResponse.json({ ok: true, status: "in_review", current_step: app.current_step });
