@@ -2,8 +2,8 @@
 
 **How to use:** tick tasks as they are finished (`- [x]`), add a changelog line, and record EkLink test results in §3. Antigravity must update this file after every task (see `rules.md` §0).
 
-**Current phase:** 2, Medical flow end-to-end (Step A in progress)
-**Overall status:** Phase 1 merged to main (tagged `phase-1-done`). Branch `phase-2-medical` active.
+**Current phase:** 3, Thread, hold/resubmit, withdraw, signature (Step A in progress)
+**Overall status:** Phase 2 merged to main (tagged `phase-2-done`). Branch `phase-3-thread-signature` active.
 **Last updated:** 2026-10-29
 
 ---
