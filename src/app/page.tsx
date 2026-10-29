@@ -35,6 +35,12 @@ export default async function HomePage() {
                 {session.login_id} • {session.department || "CSE"}
               </p>
             </div>
+            <Link
+              href="/profile"
+              className="text-xs px-2.5 py-1.5 border border-slate-300 rounded hover:bg-slate-100 text-slate-700 transition"
+            >
+              Profile
+            </Link>
             <form action="/auth/logout" method="post">
               <button
                 type="submit"

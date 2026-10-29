@@ -17,6 +17,7 @@ import { generateVerificationId } from "@/lib/stamp/verification-id";
 const DecisionSchema = z.object({
   action: z.enum(["approve", "reject", "return"]),
   comment: z.string().max(2000).optional().nullable(),
+  include_signature: z.boolean().optional(),
 });
 
 export async function POST(
@@ -48,7 +49,7 @@ export async function POST(
     );
   }
 
-  const { action, comment } = parseResult.data;
+  const { action, comment, include_signature } = parseResult.data;
 
   // 1. Fetch application details
   const app = await getApplicationById(id);
@@ -82,10 +83,10 @@ export async function POST(
 
   const currentStepConfig = app.chain_snapshot[app.current_step];
   let nextApproverLoginId: string | null = null;
+  const db = getDb();
 
   // 4. Resolve next approver if moving to next step
   if (transition.needs_approver_resolution && transition.next_step_config) {
-    const db = getDb();
     const resolutionContext: ApproverResolutionContext = {
       async findPersonsByRoleAndDept(role: string, department: string) {
         const { data } = await db
@@ -143,7 +144,22 @@ export async function POST(
   }
 
   // 5. Generate unique verification ID for this approver decision
-  const verificationId = generateVerificationId();
+  // Stamped with official digital seal for both approve and reject decisions
+  const isStamped = action === "approve" || action === "reject";
+  const verificationId = isStamped ? generateVerificationId() : null;
+
+  // Retrieve approver signature image from profile if enabled (default true)
+  const shouldAttachSignature = include_signature !== false;
+  let signaturePath: string | null = null;
+
+  if (isStamped && shouldAttachSignature) {
+    const { data: person } = await db
+      .from("people")
+      .select("signature_path")
+      .eq("login_id", session.login_id)
+      .maybeSingle();
+    signaturePath = person?.signature_path || null;
+  }
 
   // 6. Execute atomic persistence with optimistic lock
   const result = await executeTransitionInDb({
@@ -157,7 +173,7 @@ export async function POST(
     decision: transition.decision,
     comment: transition.comment,
     verification_id: verificationId,
-    signature_path: null,
+    signature_path: signaturePath,
   });
 
   if (!result.success) {
