@@ -36,19 +36,19 @@
 - [ ] EkLink tests 1–12 run (see §3)
 
 ### Phase 2, Medical flow end-to-end
-- [ ] Migrations: `application_types`, `applications`, `application_steps`, `attachments`
-- [ ] Seed `medical` chain (class teacher → HOD)
-- [ ] Student dashboard with 4 tabs (Medical active)
-- [ ] Medical form: class-teacher dropdown from `people` (faculty), attachments (≤10, PDF/JPG/PNG, 5 MB), comment, urgent
-- [ ] Attachment upload to private bucket, server-side validation, signed URLs
-- [ ] Applicant snapshot on submit
-- [ ] Step engine: resolve approver, transitions, current-approver check
-- [ ] Approver inbox: Pending / Approved / Rejected / On hold
-- [ ] Review screen with approve / reject / return + comment
-- [ ] Digital-verification stamp with unique ID (compulsory)
-- [ ] Student live-status page with full history
-- [ ] Unit tests: approver resolution and transitions
-- [ ] API tests: unauthenticated `401`, wrong user `403`
+- [x] Migrations: `application_types`, `applications`, `application_steps`, `attachments`
+- [x] Seed `medical` chain (class teacher → HOD)
+- [x] Student dashboard with 4 tabs (Medical active)
+- [x] Medical form: class-teacher dropdown from `people` (faculty), attachments (≤10, PDF/JPG/PNG, 5 MB), comment, urgent
+- [x] Attachment upload to private bucket, server-side validation, signed URLs
+- [x] Applicant snapshot on submit
+- [x] Step engine: resolve approver, transitions, current-approver check
+- [x] Approver inbox: Pending / Approved / Rejected / On hold
+- [x] Review screen with approve / reject / return + comment
+- [x] Digital-verification stamp with unique ID (compulsory)
+- [x] Student live-status page with full history
+- [x] Unit tests: approver resolution and transitions
+- [x] API tests: unauthenticated `401`, wrong user `403`
 
 ### Phase 3, Thread, hold, withdraw, signature
 - [ ] `application_messages` thread (single chronological log)
@@ -171,3 +171,4 @@ Fill in with the EkLink admin. Result: `Pass` / `Fail` / `-` (not run).
 | 2026-10-28 | Phase 0 scaffold: Next.js 16.4.3, dependencies, .gitignore, .env.example, scripts, vitest config, smoke test, placeholder home page. |
 | 2026-10-28 | Phase 1 auth & people: env validation, eklink JWKS client, 8h sessions, auth routes (/login, /callback, /refresh, /logout, /error), proxy.ts, auth guards, migration 0001, dummy CSV seed script, security headers, and 33 automated tests. |
 | 2026-10-29 | Phase 1 verified and merged to main (tagged `phase-1-done`). Branch `phase-2-medical` created for Medical flow. |
+| 2026-10-29 | Phase 2 medical flow: migration 0002, 5-kind approver resolver, transitions engine, atomic rpc transition, student dashboard & apply form, approver inbox & review screen, digital stamp (AP-XXXX-XXXX), attachments upload with magic bytes check, and 65 unit tests. |
