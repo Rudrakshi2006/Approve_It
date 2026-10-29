@@ -47,3 +47,8 @@ yarn-error.log*
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Private raw data / spreadsheets (NEVER COMMIT)
+*.xlsx
+*.xls
+private_data/
