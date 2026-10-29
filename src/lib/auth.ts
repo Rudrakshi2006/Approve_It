@@ -57,7 +57,6 @@ export async function requirePageSession(): Promise<Session> {
 
   // Check EkLink token expiry
   if (session.tok_exp <= nowSec) {
-    // Current request path for return redirect
     const pathname = headerList.get("x-pathname") || "/";
     redirect(`/auth/refresh?next=${encodeURIComponent(pathname)}`);
   }
@@ -138,4 +137,42 @@ export async function getAppRoles(loginId: string): Promise<string[]> {
   }
 
   return data.map((r: { app_role: string }) => r.app_role);
+}
+
+/**
+ * Page-level workflow_admin check (redirects non-admins).
+ */
+export async function requirePageWorkflowAdmin(): Promise<Session> {
+  const session = await requirePageSession();
+  const roles = await getAppRoles(session.login_id);
+  if (!roles.includes("workflow_admin")) {
+    redirect("/auth/error?e=forbidden_workflow_admin");
+  }
+  return session;
+}
+
+/**
+ * API-level workflow_admin check (returns 401 unauthenticated, 403 forbidden).
+ */
+export async function requireApiWorkflowAdmin(rawCookie?: string): Promise<
+  | { session: Session; errorResponse: null }
+  | { session: null; errorResponse: NextResponse }
+> {
+  const auth = await requireApiSession(rawCookie);
+  if (auth.errorResponse) {
+    return auth;
+  }
+
+  const roles = await getAppRoles(auth.session.login_id);
+  if (!roles.includes("workflow_admin")) {
+    return {
+      session: null,
+      errorResponse: NextResponse.json(
+        { error: "forbidden", message: "workflow_admin designation required" },
+        { status: 403 }
+      ),
+    };
+  }
+
+  return auth;
 }

@@ -4,7 +4,9 @@ import { requirePageSession } from "@/lib/auth";
 import { listApplicationsByApplicant } from "@/lib/repos/applications";
 import { formatToIST } from "@/lib/date";
 
-export default async function HomePage() {
+export default async function HomePage(props: {
+  searchParams: Promise<{ type?: string }>;
+}) {
   const session = await requirePageSession();
 
   // If approver role, redirect to inbox
@@ -12,7 +14,53 @@ export default async function HomePage() {
     redirect("/inbox");
   }
 
-  const applications = await listApplicationsByApplicant(session.login_id);
+  const { type = "medical" } = await props.searchParams;
+  const activeType = ["medical", "hackathon", "re_ca", "general"].includes(type)
+    ? type
+    : "medical";
+
+  const allApplications = await listApplicationsByApplicant(session.login_id);
+  const applications = allApplications.filter((a) => a.type === activeType);
+
+  const typeConfig: Record<
+    string,
+    { title: string; desc: string; applyUrl: string; btnLabel: string; emptyTitle: string; emptyDesc: string }
+  > = {
+    medical: {
+      title: "Medical Leave Applications",
+      desc: "Apply for illness leave with medical proof. Chain: Class Teacher → HOD.",
+      applyUrl: "/apply/medical",
+      btnLabel: "+ Apply Medical Leave",
+      emptyTitle: "No Medical Applications Yet",
+      emptyDesc: "Submit an application with supporting medical certificates for verification by your Class Teacher and HOD.",
+    },
+    hackathon: {
+      title: "Hackathon & Competition Leave",
+      desc: "Apply for on-duty leave to represent college. Chain: Admin Staff (Attendance) → Hackathon Incharge (Dr. Sachin Harne) → HOD → Director.",
+      applyUrl: "/apply/hackathon",
+      btnLabel: "+ Apply Hackathon Leave",
+      emptyTitle: "No Hackathon Applications Yet",
+      emptyDesc: "Submit your hackathon shortlist or event invitation letter for multi-step approval.",
+    },
+    re_ca: {
+      title: "Re-Continuous Assessment (Re-CA)",
+      desc: "Apply to re-appear for a missed internal test. Chain: Course Faculty → HOD → Exam Cell.",
+      applyUrl: "/apply/re_ca",
+      btnLabel: "+ Apply for Re-CA",
+      emptyTitle: "No Re-CA Applications Yet",
+      emptyDesc: "Submit a request with valid proof for a missed continuous assessment test.",
+    },
+    general: {
+      title: "General Applications",
+      desc: "Formal requests for Bonafide, LOR, gate pass, or other permissions. Chain: Mentor/Faculty → HOD.",
+      applyUrl: "/apply/general",
+      btnLabel: "+ Submit General Request",
+      emptyTitle: "No General Applications Yet",
+      emptyDesc: "Submit an official request to your faculty mentor and HOD.",
+    },
+  };
+
+  const current = typeConfig[activeType];
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
@@ -57,52 +105,60 @@ export default async function HomePage() {
       <main className="max-w-5xl mx-auto px-4 py-8">
         {/* Application Types Tabs */}
         <div className="flex border-b border-slate-200 mb-6 gap-2">
-          <button className="px-4 py-2 border-b-2 border-slate-900 font-semibold text-slate-900 text-sm">
+          <Link
+            href="/?type=medical"
+            className={`px-4 py-2 border-b-2 font-semibold text-sm transition ${
+              activeType === "medical"
+                ? "border-slate-900 text-slate-900"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
             Medical Leave
-          </button>
-          <button
-            disabled
-            className="px-4 py-2 text-slate-400 text-sm font-medium cursor-not-allowed flex items-center gap-1.5"
+          </Link>
+          <Link
+            href="/?type=hackathon"
+            className={`px-4 py-2 border-b-2 font-semibold text-sm transition ${
+              activeType === "hackathon"
+                ? "border-slate-900 text-slate-900"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
           >
-            Hackathon
-            <span className="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.2 rounded">
-              Coming soon
-            </span>
-          </button>
-          <button
-            disabled
-            className="px-4 py-2 text-slate-400 text-sm font-medium cursor-not-allowed flex items-center gap-1.5"
+            Hackathon &amp; Competitions
+          </Link>
+          <Link
+            href="/?type=re_ca"
+            className={`px-4 py-2 border-b-2 font-semibold text-sm transition ${
+              activeType === "re_ca"
+                ? "border-slate-900 text-slate-900"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
           >
-            Re-CA
-            <span className="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.2 rounded">
-              Coming soon
-            </span>
-          </button>
-          <button
-            disabled
-            className="px-4 py-2 text-slate-400 text-sm font-medium cursor-not-allowed flex items-center gap-1.5"
+            Re-CA (Exam)
+          </Link>
+          <Link
+            href="/?type=general"
+            className={`px-4 py-2 border-b-2 font-semibold text-sm transition ${
+              activeType === "general"
+                ? "border-slate-900 text-slate-900"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
           >
-            General
-            <span className="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.2 rounded">
-              Coming soon
-            </span>
-          </button>
+            General Request
+          </Link>
         </div>
 
         {/* Action Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Medical Applications</h1>
-            <p className="text-sm text-slate-600">
-              Apply for leave and track multi-step verification status in real-time.
-            </p>
+            <h1 className="text-xl font-bold text-slate-900">{current.title}</h1>
+            <p className="text-sm text-slate-600 mt-0.5">{current.desc}</p>
           </div>
 
           <Link
-            href="/apply/medical"
-            className="bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium px-4 py-2 rounded-md shadow-sm transition"
+            href={current.applyUrl}
+            className="inline-flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold px-4 py-2.5 rounded-md shadow-sm transition shrink-0"
           >
-            + Apply Medical Leave
+            {current.btnLabel}
           </Link>
         </div>
 
@@ -111,18 +167,23 @@ export default async function HomePage() {
           <div className="bg-white border border-slate-200 rounded-lg p-12 text-center">
             <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
               </svg>
             </div>
             <h3 className="font-semibold text-slate-800 text-base mb-1">
-              No Medical Applications Yet
+              {current.emptyTitle}
             </h3>
             <p className="text-slate-500 text-sm mb-5 max-w-sm mx-auto">
-              Submit an application with supporting medical certificates for verification by your Class Teacher and HOD.
+              {current.emptyDesc}
             </p>
             <Link
-              href="/apply/medical"
-              className="inline-block bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium px-4 py-2 rounded-md transition"
+              href={current.applyUrl}
+              className="inline-block bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold px-4 py-2 rounded-md transition"
             >
               Start Application
             </Link>
@@ -145,12 +206,14 @@ export default async function HomePage() {
                       <div className="flex items-center gap-2">
                         {app.urgent && (
                           <span className="bg-rose-100 text-rose-700 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase">
-                            Urgent
+                            ⚡ Urgent
                           </span>
                         )}
                         <span className="font-medium text-slate-900">{app.subject}</span>
                       </div>
-                      <span className="text-xs text-slate-500">ID: {app.id.slice(0, 8)}...</span>
+                      <span className="text-xs text-slate-400 font-mono">
+                        ID: {app.id.slice(0, 8)}...
+                      </span>
                     </td>
                     <td className="px-5 py-4 text-slate-600 text-xs">
                       {formatToIST(app.created_at)}
@@ -159,32 +222,34 @@ export default async function HomePage() {
                       {app.status === "in_review" && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
                           <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                          In Review (Step {app.current_step + 1})
+                          In Review (Step {app.current_step + 1} of {app.chain_snapshot.length})
                         </span>
                       )}
                       {app.status === "approved" && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                          Approved
+                          ✓ Approved
                         </span>
                       )}
                       {app.status === "rejected" && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800">
-                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                          Rejected
+                          ✕ Rejected
                         </span>
                       )}
                       {app.status === "returned" && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800">
-                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                          Returned
+                          ↩ Returned
+                        </span>
+                      )}
+                      {app.status === "cancelled" && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
+                          Withdrawn
                         </span>
                       )}
                     </td>
                     <td className="px-5 py-4 text-right">
                       <Link
                         href={`/applications/${app.id}`}
-                        className="text-xs font-semibold text-slate-900 hover:text-slate-700 hover:underline"
+                        className="text-xs font-bold text-indigo-600 hover:text-indigo-800 hover:underline"
                       >
                         View Status →
                       </Link>

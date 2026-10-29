@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     return new NextResponse("Not Found", { status: 404 });
   }
 
-  const roleParam = request.nextUrl.searchParams.get("role") || "";
+  const roleParam = (request.nextUrl.searchParams.get("role") || "").toLowerCase();
   const idParam = request.nextUrl.searchParams.get("id") || "";
   const nowSec = Math.floor(Date.now() / 1000);
 
@@ -27,7 +27,9 @@ export async function GET(request: NextRequest) {
     exp: number;
   } | null = null;
 
-  // 1. Direct ID lookup in people table if ?id=T037 is passed
+  let redirectTarget: string | null = null;
+
+  // 1. Direct ID lookup in people table if ?id=T036 is passed
   if (idParam) {
     const db = getDb();
     const { data: p } = await db
@@ -55,7 +57,64 @@ export async function GET(request: NextRequest) {
 
   // 2. Specific named shortcuts
   if (!sessionData) {
-    if (roleParam === "hrushikesh" || roleParam === "T037") {
+    if (roleParam === "sachin" || roleParam === "incharge" || roleParam === "t036") {
+      sessionData = {
+        sub: "dev-sub-t036",
+        login_id: "T036",
+        name: "Dr. Sachin Harne",
+        email: "sachin.harne@sitnagpur.siu.edu.in",
+        eklink_role: "faculty",
+        department: "CSE",
+        batch: null,
+        section: null,
+        tok: "dev.tok.val",
+        tok_exp: nowSec + 3600,
+        exp: nowSec + SESSION_MAX_AGE,
+      };
+    } else if (roleParam === "admin_staff" || roleParam === "staff" || roleParam === "sta5001") {
+      sessionData = {
+        sub: "dev-sub-sta5001",
+        login_id: "STA5001",
+        name: "Ramesh Pawar",
+        email: "ramesh.pawar@sitnagpur.siu.edu.in",
+        eklink_role: "staff",
+        department: "ADMIN",
+        batch: null,
+        section: null,
+        tok: "dev.tok.val",
+        tok_exp: nowSec + 3600,
+        exp: nowSec + SESSION_MAX_AGE,
+      };
+    } else if (roleParam === "exam_cell" || roleParam === "t009") {
+      sessionData = {
+        sub: "dev-sub-t009",
+        login_id: "T009",
+        name: "Dr. Pradnya Sulas Borkar",
+        email: "pradnya.borkar@sitnagpur.siu.edu.in",
+        eklink_role: "faculty",
+        department: "CSE",
+        batch: null,
+        section: null,
+        tok: "dev.tok.val",
+        tok_exp: nowSec + 3600,
+        exp: nowSec + SESSION_MAX_AGE,
+      };
+    } else if (roleParam === "workflow_admin" || roleParam === "admin") {
+      sessionData = {
+        sub: "dev-sub-t001",
+        login_id: "T001",
+        name: "Dr. Nitin Rakesh (Workflow Admin)",
+        email: "nitin.rakesh@sitnagpur.siu.edu.in",
+        eklink_role: "director",
+        department: "CSE",
+        batch: null,
+        section: null,
+        tok: "dev.tok.val",
+        tok_exp: nowSec + 3600,
+        exp: nowSec + SESSION_MAX_AGE,
+      };
+      redirectTarget = "/admin/assignments";
+    } else if (roleParam === "hrushikesh" || roleParam === "t037") {
       sessionData = {
         sub: "dev-sub-t037",
         login_id: "T037",
@@ -130,7 +189,7 @@ export async function GET(request: NextRequest) {
   }
 
   const token = await signSession(sessionData);
-  const targetUrl = sessionData.eklink_role === "student" ? "/" : "/inbox";
+  const targetUrl = redirectTarget || (sessionData.eklink_role === "student" ? "/" : "/inbox");
 
   const env = getEnv();
   const response = NextResponse.redirect(new URL(targetUrl, env.APP_URL));

@@ -15,9 +15,10 @@ import {
 import { generateVerificationId } from "@/lib/stamp/verification-id";
 
 const DecisionSchema = z.object({
-  action: z.enum(["approve", "reject", "return"]),
+  action: z.enum(["approve", "reject", "return", "forward"]),
   comment: z.string().max(2000).optional().nullable(),
   include_signature: z.boolean().optional(),
+  attendance_percentage: z.number().min(0).max(100).optional().nullable(),
 });
 
 export async function POST(
@@ -49,7 +50,7 @@ export async function POST(
     );
   }
 
-  const { action, comment, include_signature } = parseResult.data;
+  const { action, comment, include_signature, attendance_percentage } = parseResult.data;
 
   // 1. Fetch application details
   const app = await getApplicationById(id);
@@ -71,12 +72,13 @@ export async function POST(
     app.chain_snapshot,
     session.login_id,
     action,
-    comment
+    comment,
+    { attendance_percentage }
   );
 
   if (!transition.ok) {
     return NextResponse.json(
-      { error: transition.message },
+      { error: transition.message, code: transition.code },
       { status: transition.httpStatus }
     );
   }
@@ -144,8 +146,8 @@ export async function POST(
   }
 
   // 5. Generate unique verification ID for this approver decision
-  // Stamped with official digital seal for both approve and reject decisions
-  const isStamped = action === "approve" || action === "reject";
+  // Stamped with official digital seal for approve, forward, and reject decisions
+  const isStamped = action === "approve" || action === "reject" || action === "forward";
   const verificationId = isStamped ? generateVerificationId() : null;
 
   // Retrieve approver signature image from profile if enabled (default true)

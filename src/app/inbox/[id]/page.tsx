@@ -55,6 +55,13 @@ export default async function ApproverReviewPage(props: {
   const timeline = buildUnifiedTimeline(app.steps, messages || [], app.attachments);
   const canReply = app.status === "in_review" || app.status === "returned";
 
+  const typeLabels: Record<string, string> = {
+    medical: "Medical Leave",
+    hackathon: "Hackathon & Competition",
+    re_ca: "Re-Continuous Assessment (Re-CA)",
+    general: "General Application",
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-16">
       {/* Header */}
@@ -82,13 +89,13 @@ export default async function ApproverReviewPage(props: {
               <div className="flex items-center gap-2 mb-1">
                 {app.urgent && (
                   <span className="bg-rose-100 text-rose-700 text-xs font-bold px-2 py-0.5 rounded uppercase">
-                    Urgent
+                    ⚡ Urgent
                   </span>
                 )}
                 <h1 className="text-xl font-bold text-slate-900">{app.subject}</h1>
               </div>
               <p className="text-xs text-slate-500">
-                Submitted on {formatToIST(app.created_at)} • Type: Medical Leave
+                Submitted on {formatToIST(app.created_at)} • Type: {typeLabels[app.type] || app.type}
               </p>
             </div>
 
@@ -166,7 +173,10 @@ export default async function ApproverReviewPage(props: {
         {/* Action Box */}
         {isCurrentApprover && app.status === "in_review" ? (
           <div className="mb-6">
-            <ReviewActions applicationId={app.id} />
+            <ReviewActions
+              applicationId={app.id}
+              stepConfig={app.chain_snapshot[app.current_step]}
+            />
           </div>
         ) : (
           <div className="bg-slate-100 border border-slate-200 rounded-lg p-4 mb-6 text-xs text-slate-600">
