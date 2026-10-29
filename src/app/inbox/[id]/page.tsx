@@ -148,6 +148,18 @@ export default async function ApproverReviewPage(props: {
                 </span>
               </div>
             </div>
+
+            {/* Student Note / Remarks */}
+            {app.payload?.comment ? (
+              <div className="mt-4 p-4 bg-amber-50/80 border border-amber-200 rounded-lg">
+                <span className="text-xs font-bold text-amber-950 uppercase tracking-wider block mb-1">
+                  📝 Student Note / Reason:
+                </span>
+                <p className="text-xs text-amber-900 whitespace-pre-wrap leading-relaxed">
+                  {String(app.payload.comment)}
+                </p>
+              </div>
+            ) : null}
           </div>
         </div>
 

@@ -23,6 +23,7 @@ export function ProfileClient({
   const [sigUrl, setSigUrl] = useState<string | null>(currentSignatureUrl);
   const [uploadingSig, setUploadingSig] = useState(false);
   const [sigMsg, setSigMsg] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const isStudent = session.eklink_role === "student";
 
@@ -52,10 +53,8 @@ export function ProfileClient({
     }
   };
 
-  // Handle Signature Upload
-  const handleSignatureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-    const file = e.target.files[0];
+  // Process signature file upload
+  const uploadSignatureFile = async (file: File) => {
     setUploadingSig(true);
     setSigMsg(null);
 
@@ -80,7 +79,37 @@ export function ProfileClient({
       setSigMsg("Error uploading signature");
     } finally {
       setUploadingSig(false);
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      uploadSignatureFile(e.target.files[0]);
       e.target.value = "";
+    }
+  };
+
+  // Drag and Drop handlers
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      uploadSignatureFile(file);
     }
   };
 
@@ -194,14 +223,14 @@ export function ProfileClient({
         </div>
       )}
 
-      {/* Approver: Digital Signature Upload */}
+      {/* Approver: Digital Signature Drag & Drop Upload */}
       {!isStudent && (
         <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
           <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
             Approver Digital Signature (Optional)
           </h3>
           <p className="text-xs text-slate-500 mb-4">
-            Upload an image of your signature. When you approve or verify applications, this signature will be included inside your official Digital Verification Stamp.
+            Upload an image of your signature. When you approve applications, this signature will be included inside your official Digital Verification Stamp.
           </p>
 
           {sigMsg && (
@@ -225,13 +254,13 @@ export function ProfileClient({
               </div>
 
               <div className="flex items-center gap-3">
-                <label className="cursor-pointer bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold px-3 py-2 rounded transition">
+                <label className="cursor-pointer bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold px-3 py-2 rounded transition shadow-sm">
                   {uploadingSig ? "Uploading..." : "Replace Signature"}
                   <input
                     type="file"
                     accept=".png,.jpg,.jpeg"
                     disabled={uploadingSig}
-                    onChange={handleSignatureUpload}
+                    onChange={handleFileInputChange}
                     className="hidden"
                   />
                 </label>
@@ -248,16 +277,47 @@ export function ProfileClient({
             </div>
           ) : (
             <div>
-              <label className="cursor-pointer inline-block bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-4 py-2.5 rounded shadow-sm transition">
-                {uploadingSig ? "Uploading..." : "+ Upload Digital Signature (PNG/JPG, max 1 MB)"}
+              {/* Drag and Drop Zone */}
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`border-2 border-dashed rounded-lg p-8 text-center transition cursor-pointer ${
+                  isDragging
+                    ? "border-slate-900 bg-slate-100"
+                    : "border-slate-300 hover:border-slate-400 bg-slate-50"
+                }`}
+                onClick={() => document.getElementById("sig-file-input")?.click()}
+              >
+                <div className="w-10 h-10 bg-white border border-slate-200 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-500 shadow-sm">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                    />
+                  </svg>
+                </div>
+                <p className="text-xs font-semibold text-slate-900 mb-1">
+                  {uploadingSig
+                    ? "Uploading signature..."
+                    : isDragging
+                    ? "Drop image here..."
+                    : "Drag & drop signature image here, or click to browse"}
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  PNG or JPG image format (Max file size: 1 MB)
+                </p>
                 <input
+                  id="sig-file-input"
                   type="file"
                   accept=".png,.jpg,.jpeg"
                   disabled={uploadingSig}
-                  onChange={handleSignatureUpload}
+                  onChange={handleFileInputChange}
                   className="hidden"
                 />
-              </label>
+              </div>
             </div>
           )}
         </div>

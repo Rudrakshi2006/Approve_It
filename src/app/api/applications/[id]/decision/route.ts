@@ -144,7 +144,8 @@ export async function POST(
   }
 
   // 5. Generate unique verification ID for this approver decision
-  const verificationId = generateVerificationId();
+  const isApproval = action === "approve";
+  const verificationId = isApproval ? generateVerificationId() : null;
 
   // 6. Execute atomic persistence with optimistic lock
   const result = await executeTransitionInDb({
@@ -158,7 +159,9 @@ export async function POST(
     decision: transition.decision,
     comment: transition.comment,
     verification_id: verificationId,
-    signature_path: (await db.from("people").select("signature_path").eq("login_id", session.login_id).maybeSingle()).data?.signature_path || null,
+    signature_path: isApproval
+      ? (await db.from("people").select("signature_path").eq("login_id", session.login_id).maybeSingle()).data?.signature_path || null
+      : null,
   });
 
   if (!result.success) {

@@ -57,7 +57,7 @@ export async function createAndSubmitApplication(
     step_key: stepKey,
     actor_login_id: params.applicant_login_id,
     decision: "submitted",
-    comment: "Application submitted",
+    comment: (params.payload?.comment as string) || "Application submitted",
   });
 
   if (stepError) {

@@ -212,6 +212,16 @@ export default async function ApplicationStatusPage(props: {
                   Semester {app.applicant_snapshot.semester || 1} (Sec {app.applicant_snapshot.section || "A"})
                 </span>
               </div>
+              {app.payload?.comment ? (
+                <div className="pt-2 border-t border-slate-100">
+                  <span className="text-slate-400 block mb-0.5 font-bold uppercase text-[10px]">
+                    Student Remarks:
+                  </span>
+                  <p className="text-slate-900 italic">
+                    &ldquo;{String(app.payload.comment)}&rdquo;
+                  </p>
+                </div>
+              ) : null}
             </div>
           </div>
 
