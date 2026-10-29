@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 export function ReviewActions({ applicationId }: { applicationId: string }) {
   const router = useRouter();
   const [comment, setComment] = useState("");
+  const [includeSignature, setIncludeSignature] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,6 +31,7 @@ export function ReviewActions({ applicationId }: { applicationId: string }) {
         body: JSON.stringify({
           action,
           comment: comment.trim() || null,
+          include_signature: includeSignature,
         }),
       });
 
@@ -41,7 +43,13 @@ export function ReviewActions({ applicationId }: { applicationId: string }) {
         return;
       }
 
-      router.push("/inbox?tab=approved");
+      if (action === "approve") {
+        router.push("/inbox?tab=approved");
+      } else if (action === "reject") {
+        router.push("/inbox?tab=rejected");
+      } else {
+        router.push("/inbox?tab=returned");
+      }
       router.refresh();
     } catch {
       setError("An unexpected network error occurred");
@@ -55,7 +63,7 @@ export function ReviewActions({ applicationId }: { applicationId: string }) {
         Take Action on this Application
       </h3>
       <p className="text-xs text-slate-500 mb-4">
-        Your decision will be permanently logged and a unique Digital Verification Stamp will be generated.
+        Your decision will be permanently logged. A unique Digital Verification Stamp (Green for Approve, Red for Reject) will be generated.
       </p>
 
       {error && (
@@ -72,9 +80,29 @@ export function ReviewActions({ applicationId }: { applicationId: string }) {
           rows={3}
           value={comment}
           onChange={(e) => setComment(e.target.value)}
-          placeholder="Provide instructions or approval remarks..."
+          placeholder="Provide instructions or approval/rejection remarks..."
           className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white"
         />
+      </div>
+
+      {/* Checkbox option to include profile signature */}
+      <div className="mb-5 bg-slate-50 border border-slate-200 rounded p-3">
+        <label className="flex items-start gap-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={includeSignature}
+            onChange={(e) => setIncludeSignature(e.target.checked)}
+            className="w-4 h-4 mt-0.5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+          />
+          <div>
+            <span className="text-xs font-semibold text-slate-800 block">
+              Attach my uploaded signature from profile
+            </span>
+            <span className="text-[11px] text-slate-500">
+              The digital verification seal with unique ID and timestamp will always be attached by default.
+            </span>
+          </div>
+        </label>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">

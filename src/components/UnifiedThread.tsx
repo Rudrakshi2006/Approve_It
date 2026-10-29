@@ -93,6 +93,7 @@ export function UnifiedThread({
                       verificationId={item.verification_id}
                       timestamp={item.at}
                       signatureUrl={sigUrl}
+                      decision={item.decision}
                     />
                   </div>
                 )}
