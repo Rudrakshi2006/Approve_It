@@ -93,6 +93,12 @@ export async function GET(request: NextRequest) {
     res.cookies.set("eklink_state", "", { path: "/auth", maxAge: 0 });
     return res;
   } catch (err: unknown) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error(
+        "[auth/callback error]:",
+        err instanceof Error ? err.message : err
+      );
+    }
     let errorCode = "signin";
     if (err instanceof Error) {
       if (err.message === "login_id_mismatch") {

@@ -74,6 +74,12 @@ export async function verifyEklinkToken(
     if (err instanceof Error && err.message === "token_missing_required_claims") {
       throw err;
     }
+    if (process.env.NODE_ENV !== "production") {
+      console.error(
+        "[verifyEklinkToken failed]:",
+        err instanceof Error ? err.message : err
+      );
+    }
     // Generic error to avoid leaking details/signatures/tokens
     throw new Error("token_verification_failed");
   }
@@ -100,11 +106,17 @@ export async function exchangeCode(code: string): Promise<string> {
       cache: "no-store",
       signal: AbortSignal.timeout(10000),
     });
-  } catch {
+  } catch (err: unknown) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[exchangeCode network error]:", err instanceof Error ? err.message : err);
+    }
     throw new Error("code_exchange_network_error");
   }
 
   if (!response.ok) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[exchangeCode failed]: HTTP", response.status);
+    }
     throw new Error("code_exchange_failed");
   }
 

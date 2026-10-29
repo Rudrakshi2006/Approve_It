@@ -2,8 +2,14 @@ import "server-only";
 import { z } from "zod";
 
 const envSchema = z.object({
-  EKLINK_URL: z.string().url("EKLINK_URL must be a valid URL"),
-  EKLINK_ISSUER: z.string().url("EKLINK_ISSUER must be a valid URL"),
+  EKLINK_URL: z
+    .string()
+    .url("EKLINK_URL must be a valid URL")
+    .transform((val) => val.replace(/\/+$/, "")),
+  EKLINK_ISSUER: z
+    .string()
+    .url("EKLINK_ISSUER must be a valid URL")
+    .transform((val) => val.replace(/\/+$/, "")),
   EKLINK_CLIENT_ID: z.string().min(1, "EKLINK_CLIENT_ID must not be empty"),
   EKLINK_CLIENT_SECRET: z.string().min(1, "EKLINK_CLIENT_SECRET must not be empty"),
   EKLINK_REDIRECT_URI: z.string().url("EKLINK_REDIRECT_URI must be a valid URL"),
