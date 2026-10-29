@@ -114,9 +114,8 @@ export async function exchangeCode(code: string): Promise<string> {
   }
 
   if (!response.ok) {
-    const errorBody = await response.text().catch(() => "");
     if (process.env.NODE_ENV !== "production") {
-      console.error("[exchangeCode failed]: HTTP", response.status, errorBody);
+      console.error(`[exchangeCode failed]: HTTP ${response.status}`);
     }
     throw new Error("code_exchange_failed");
   }
