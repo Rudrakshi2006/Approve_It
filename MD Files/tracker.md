@@ -2,9 +2,9 @@
 
 **How to use:** tick tasks as they are finished (`- [x]`), add a changelog line, and record EkLink test results in §3. Antigravity must update this file after every task (see `rules.md` §0).
 
-**Current phase:** 1, Auth & people (code complete; awaiting developer manual testing)
-**Overall status:** Phase 1 code and automated tests complete.
-**Last updated:** 2026-10-28
+**Current phase:** 2, Medical flow end-to-end (Step A in progress)
+**Overall status:** Phase 1 merged to main (tagged `phase-1-done`). Branch `phase-2-medical` active.
+**Last updated:** 2026-10-29
 
 ---
 
@@ -170,3 +170,4 @@ Fill in with the EkLink admin. Result: `Pass` / `Fail` / `-` (not run).
 | 2026-10-28 | Planning done. Created `rules.md`, `planning.md`, `tracker.md`, `README.md`. |
 | 2026-10-28 | Phase 0 scaffold: Next.js 16.4.3, dependencies, .gitignore, .env.example, scripts, vitest config, smoke test, placeholder home page. |
 | 2026-10-28 | Phase 1 auth & people: env validation, eklink JWKS client, 8h sessions, auth routes (/login, /callback, /refresh, /logout, /error), proxy.ts, auth guards, migration 0001, dummy CSV seed script, security headers, and 33 automated tests. |
+| 2026-10-29 | Phase 1 verified and merged to main (tagged `phase-1-done`). Branch `phase-2-medical` created for Medical flow. |
