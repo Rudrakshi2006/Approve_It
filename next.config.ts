@@ -1,16 +1,61 @@
 import type { NextConfig } from "next";
 
+function getCspHeader(): string {
+  const supabaseHost = process.env.SUPABASE_URL
+    ? new URL(process.env.SUPABASE_URL).origin
+    : "";
+  const eklinkOrigin = process.env.EKLINK_URL
+    ? new URL(process.env.EKLINK_URL).origin
+    : "";
+
+  const connectSrc = ["'self'", supabaseHost].filter(Boolean).join(" ");
+  const imgSrc = ["'self'", "data:", "blob:", supabaseHost].filter(Boolean).join(" ");
+  const formAction = ["'self'", eklinkOrigin].filter(Boolean).join(" ");
+
+  const isDev = process.env.NODE_ENV !== "production";
+  const scriptSrc = isDev
+    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" // 'unsafe-eval' enabled only for Next/React dev tools
+    : "script-src 'self' 'unsafe-inline'"; // Strict for production
+
+  return [
+    "default-src 'self'",
+    scriptSrc,
+    "style-src 'self' 'unsafe-inline'",
+    `img-src ${imgSrc}`,
+    `connect-src ${connectSrc}`,
+    "font-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    `form-action ${formAction}`,
+    "frame-ancestors 'none'",
+  ].join("; ");
+}
+
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
-  turbopack: {
-    rules: {
-      "*.css": {
-        loaders: ["@tailwindcss/turbopack"],
-        as: "*.css",
+  poweredByHeader: false,
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          { key: "Content-Security-Policy", value: getCspHeader() },
+        ],
       },
-    },
+      {
+        // Cache-Control: no-store for all pages and APIs, but not _next/static
+        source: "/((?!_next/static|_next/image|favicon.ico).*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-store, no-cache, must-revalidate, proxy-revalidate",
+          },
+        ],
+      },
+    ];
   },
 };
 

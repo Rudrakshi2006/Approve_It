@@ -2,8 +2,8 @@
 
 **How to use:** tick tasks as they are finished (`- [x]`), add a changelog line, and record EkLink test results in §3. Antigravity must update this file after every task (see `rules.md` §0).
 
-**Current phase:** 0, Setup (scaffold & repo setup complete; awaiting developer setup)
-**Overall status:** Phase 0 code tasks complete.
+**Current phase:** 1, Auth & people (code complete; awaiting developer manual testing)
+**Overall status:** Phase 1 code and automated tests complete.
 **Last updated:** 2026-10-28
 
 ---
@@ -22,17 +22,17 @@
 - [x] Set local dev port 3002 and local callback `http://localhost:3002/auth/callback`
 
 ### Phase 1, Auth & people
-- [ ] `src/lib/eklink.ts` (JWKS verify, code exchange, refresh)
-- [ ] `src/lib/session.ts` (own session cookie, 8 h cap)
-- [ ] `/auth/login` (state ≥32 bytes, cookie)
-- [ ] `/auth/callback` (state check, exchange, verify, upsert, session)
-- [ ] `/auth/refresh` (safe `next`, destroy session on failure)
-- [ ] `/auth/logout` (clear cookie, go to EkLink dashboard)
-- [ ] `/auth/error` page with "Back to EkLink" link
-- [ ] `proxy.ts` convenience redirect
-- [ ] `people` table + CSV import/pre-seed (faculty, staff, HOD, director, students)
-- [ ] `upsertPerson` links `sub` by `login_id`
-- [ ] Security headers (R14)
+- [x] `src/lib/eklink.ts` (JWKS verify, code exchange, refresh)
+- [x] `src/lib/session.ts` (own session cookie, 8 h cap)
+- [x] `/auth/login` (state ≥32 bytes, cookie)
+- [x] `/auth/callback` (state check, exchange, verify, upsert, session)
+- [x] `/auth/refresh` (safe `next`, destroy session on failure)
+- [x] `/auth/logout` (clear cookie, go to EkLink dashboard)
+- [x] `/auth/error` page with "Back to EkLink" link
+- [x] `proxy.ts` convenience redirect
+- [x] `people` table + CSV import/pre-seed (faculty, staff, HOD, director, students)
+- [x] `upsertPerson` links `sub` by `login_id`
+- [x] Security headers (R14)
 - [ ] EkLink tests 1–12 run (see §3)
 
 ### Phase 2, Medical flow end-to-end
@@ -96,18 +96,18 @@ Fill in with the EkLink admin. Result: `Pass` / `Fail` / `-` (not run).
 
 | # | Test | Expected | Result | Date | Notes |
 |---|---|---|---|---|---|
-| 1 | Open app URL with no session | Redirected to EkLink; after login back inside the app | - | | |
-| 2 | Click app card on EkLink dashboard while logged in | Lands in app, no second login | - | | |
-| 3 | Callback with wrong/missing `state` | Rejected, no session | - | | |
-| 4 | Reuse the same `code` | `/token` rejects; app shows error | - | | |
-| 5 | Use an expired code (>60 s) | Rejected | - | | |
-| 6 | Tamper `redirect_uri` in `/authorize` | EkLink shows "Invalid redirect"; no code | - | | |
-| 7 | Sign in with a role not allowed | EkLink shows "No access" | - | | |
-| 8 | Expired token, other `aud`, unsigned/`HS256` token | All rejected | - | | |
-| 9 | Admin deactivates or force-logs-out user; wait for refresh | Session ends; user sent to sign-in | - | | |
-| 10 | API with no cookie; API with another role's cookie | `401` / `403` from server | - | | |
-| 11 | Search repo and browser for secret, tokens, service key | Not present | - | | |
-| 12 | Logout | Cookie cleared; lands on EkLink dashboard; back button shows no private data | - | | |
+| 1 | Open app URL with no session | Redirected to EkLink; after login back inside the app | - | | Needs manual test with real EkLink login |
+| 2 | Click app card on EkLink dashboard while logged in | Lands in app, no second login | - | | Needs manual test from EkLink dashboard |
+| 3 | Callback with wrong/missing `state` | Rejected, no session | - | | Covered by unit tests in session-and-redirect.test.ts & callback-route.test.ts |
+| 4 | Reuse the same `code` | `/token` rejects; app shows error | - | | Needs manual test with EkLink admin |
+| 5 | Use an expired code (>60 s) | Rejected | - | | Needs manual test with EkLink admin |
+| 6 | Tamper `redirect_uri` in `/authorize` | EkLink shows "Invalid redirect"; no code | - | | Needs manual test with EkLink admin |
+| 7 | Sign in with a role not allowed | EkLink shows "No access" | - | | Covered by unit tests in callback-route.test.ts & auth-guards.test.ts |
+| 8 | Expired token, other `aud`, unsigned/`HS256` token | All rejected | - | | Covered by unit tests in eklink-token.test.ts |
+| 9 | Admin deactivates or force-logs-out user; wait for refresh | Session ends; user sent to sign-in | - | | Needs manual test with EkLink admin |
+| 10 | API with no cookie; API with another role's cookie | `401` / `403` from server | - | | Covered by unit tests in auth-guards.test.ts |
+| 11 | Search repo and browser for secret, tokens, service key | Not present | - | | Automated secret & diff scan clean |
+| 12 | Logout | Cookie cleared; lands on EkLink dashboard; back button shows no private data | - | | Needs manual browser test with EkLink |
 
 ### ApproveIt-specific tests
 
@@ -169,3 +169,4 @@ Fill in with the EkLink admin. Result: `Pass` / `Fail` / `-` (not run).
 |---|---|
 | 2026-10-28 | Planning done. Created `rules.md`, `planning.md`, `tracker.md`, `README.md`. |
 | 2026-10-28 | Phase 0 scaffold: Next.js 16.4.3, dependencies, .gitignore, .env.example, scripts, vitest config, smoke test, placeholder home page. |
+| 2026-10-28 | Phase 1 auth & people: env validation, eklink JWKS client, 8h sessions, auth routes (/login, /callback, /refresh, /logout, /error), proxy.ts, auth guards, migration 0001, dummy CSV seed script, security headers, and 33 automated tests. |

@@ -1,0 +1,16 @@
+login_id,name,college_email,role,department
+HOD3001,Dr. Rajesh Sharma,rajesh.sharma@sitnagpur.edu.in,hod,CSE
+DIR4001,Dr. Ananya Mukherjee,ananya.mukherjee@sitnagpur.edu.in,director,
+FAC2001,Prof. Vikram Deshmukh,vikram.deshmukh@sitnagpur.edu.in,faculty,CSE
+FAC2002,Prof. Neha Kulkarni,neha.kulkarni@sitnagpur.edu.in,faculty,CSE
+FAC2003,Prof. Amit Verma,amit.verma@sitnagpur.edu.in,faculty,CSE
+FAC2004,Prof. Sneha Patil,sneha.patil@sitnagpur.edu.in,faculty,CSE
+FAC2005,Prof. Rahul Joshi,rahul.joshi@sitnagpur.edu.in,faculty,CSE
+FAC2006,Prof. Pooja Mehta,pooja.mehta@sitnagpur.edu.in,faculty,CSE
+STA5001,Ramesh Pawar,ramesh.pawar@sitnagpur.edu.in,staff,
+STA5002,Suresh Shinde,suresh.shinde@sitnagpur.edu.in,staff,
+STU1001,Aarav Patel,aarav.patel@sitnagpur.edu.in,student,CSE
+STU1002,Isha Sharma,isha.sharma@sitnagpur.edu.in,student,CSE
+STU1003,Rohan Gupta,rohan.gupta@sitnagpur.edu.in,student,CSE
+STU1004,Tanvi Kadam,tanvi.kadam@sitnagpur.edu.in,student,CSE
+STU1005,Devansh Shah,devansh.shah@sitnagpur.edu.in,student,CSE
