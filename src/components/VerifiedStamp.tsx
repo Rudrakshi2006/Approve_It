@@ -6,7 +6,7 @@ interface VerifiedStampProps {
   designation?: string;
   verificationId: string;
   timestamp: string | Date;
-  signaturePath?: string | null;
+  signatureUrl?: string | null;
 }
 
 export function VerifiedStamp({
@@ -14,6 +14,7 @@ export function VerifiedStamp({
   designation,
   verificationId,
   timestamp,
+  signatureUrl,
 }: VerifiedStampProps) {
   return (
     <div className="inline-block border-2 border-emerald-600 bg-emerald-50/50 rounded-lg p-3 my-2 text-emerald-950 font-sans shadow-sm select-none">
@@ -35,6 +36,17 @@ export function VerifiedStamp({
           Digitally Verified
         </span>
       </div>
+
+      {signatureUrl && (
+        <div className="my-1.5 p-1 bg-white/90 rounded border border-emerald-200 inline-block">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={signatureUrl}
+            alt="Approver Signature"
+            className="max-h-10 max-w-[140px] object-contain"
+          />
+        </div>
+      )}
 
       <div className="mt-1 text-xs">
         <p className="font-medium text-emerald-900">

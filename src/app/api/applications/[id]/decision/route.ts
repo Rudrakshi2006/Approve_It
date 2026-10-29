@@ -82,10 +82,11 @@ export async function POST(
 
   const currentStepConfig = app.chain_snapshot[app.current_step];
   let nextApproverLoginId: string | null = null;
+  const db = getDb();
 
   // 4. Resolve next approver if moving to next step
   if (transition.needs_approver_resolution && transition.next_step_config) {
-    const db = getDb();
+    // using db from outer scope
     const resolutionContext: ApproverResolutionContext = {
       async findPersonsByRoleAndDept(role: string, department: string) {
         const { data } = await db
@@ -157,7 +158,7 @@ export async function POST(
     decision: transition.decision,
     comment: transition.comment,
     verification_id: verificationId,
-    signature_path: null,
+    signature_path: (await db.from("people").select("signature_path").eq("login_id", session.login_id).maybeSingle()).data?.signature_path || null,
   });
 
   if (!result.success) {
