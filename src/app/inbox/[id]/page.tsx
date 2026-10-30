@@ -9,6 +9,7 @@ import { createSignatureSignedUrl } from "@/lib/signature";
 import { AttachmentItem } from "@/app/applications/[id]/AttachmentItem";
 import { ReviewActions } from "./ReviewActions";
 import { UnifiedThread } from "@/components/UnifiedThread";
+import { LeaveDetailsCard } from "@/components/LeaveDetailsCard";
 
 export default async function ApproverReviewPage(props: {
   params: Promise<{ id: string }>;
@@ -248,28 +249,51 @@ export default async function ApproverReviewPage(props: {
             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
               Applicant Details (Frozen Snapshot)
             </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs bg-slate-50 p-4 rounded-md">
-              <div>
-                <span className="text-slate-400 block">Student Name</span>
-                <span className="font-bold text-slate-900">{app.applicant_snapshot.name}</span>
+            {["employee_general", "employee_leave", "hod_general", "hod_leave"].includes(app.type) ? (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs bg-slate-50 p-4 rounded-md">
+                <div>
+                  <span className="text-slate-400 block">Employee Name</span>
+                  <span className="font-bold text-slate-900">{app.applicant_snapshot.name}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block">Login ID</span>
+                  <span className="font-mono text-slate-800">{app.applicant_snapshot.login_id}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block">Department</span>
+                  <span className="text-slate-800 font-medium">{app.applicant_snapshot.department}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block">Designation / Group</span>
+                  <span className="text-slate-800 font-medium">
+                    {app.applicant_snapshot.designation || "Faculty"} (Sat: {app.applicant_snapshot.saturday_group?.toUpperCase() || "ODD"})
+                  </span>
+                </div>
               </div>
-              <div>
-                <span className="text-slate-400 block">PRN / Roll No</span>
-                <span className="font-mono text-slate-800">{app.applicant_snapshot.login_id}</span>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs bg-slate-50 p-4 rounded-md">
+                <div>
+                  <span className="text-slate-400 block">Student Name</span>
+                  <span className="font-bold text-slate-900">{app.applicant_snapshot.name}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block">PRN / Roll No</span>
+                  <span className="font-mono text-slate-800">{app.applicant_snapshot.login_id}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block">Dept &amp; Batch</span>
+                  <span className="text-slate-800 font-medium">
+                    {app.applicant_snapshot.department} • {app.applicant_snapshot.batch || "2024-28"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block">Semester &amp; Section</span>
+                  <span className="text-slate-800 font-medium">
+                    Semester {app.applicant_snapshot.semester || 1} (Sec {app.applicant_snapshot.section || "A"})
+                  </span>
+                </div>
               </div>
-              <div>
-                <span className="text-slate-400 block">Dept &amp; Batch</span>
-                <span className="text-slate-800 font-medium">
-                  {app.applicant_snapshot.department} • {app.applicant_snapshot.batch || "2024-28"}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-400 block">Semester &amp; Section</span>
-                <span className="text-slate-800 font-medium">
-                  Semester {app.applicant_snapshot.semester || 1} (Sec {app.applicant_snapshot.section || "A"})
-                </span>
-              </div>
-            </div>
+            )}
 
             {/* Student Note / Remarks */}
             {app.payload?.comment ? (
@@ -284,6 +308,11 @@ export default async function ApproverReviewPage(props: {
             ) : null}
           </div>
         </div>
+
+        {/* LEAVE DETAILS & BALANCE CARD (Faculty & Staff) */}
+        {(app.type === "employee_leave" || app.type === "hod_leave") && (
+          <LeaveDetailsCard payload={app.payload} status={app.status} />
+        )}
 
         {/* PROMINENT VERIFIED ATTENDANCE CARD (From Admin Staff) */}
         {adminStaffForwarded && (

@@ -5,6 +5,8 @@ import { listApplicationsByApplicant } from "@/lib/repos/applications";
 import { getDb } from "@/lib/db";
 import { formatToIST, formatDatesInText } from "@/lib/date";
 import { NotificationBell } from "@/components/NotificationBell";
+import { EmployeeDashboard } from "@/components/EmployeeDashboard";
+import { getOrMaterializeLeaveBalances } from "@/lib/leave/service";
 
 export default async function HomePage(props: {
   searchParams: Promise<{ type?: string }>;
@@ -13,7 +15,53 @@ export default async function HomePage(props: {
 
   // If approver role, redirect to inbox
   if (session.eklink_role !== "student") {
-    redirect("/inbox");
+    const db = getDb();
+    const balances = await getOrMaterializeLeaveBalances(session.login_id);
+    const { data: person } = await db
+      .from("people")
+      .select("saturday_group, designation, department")
+      .eq("login_id", session.login_id)
+      .maybeSingle();
+
+    const employeeApps = await listApplicationsByApplicant(session.login_id);
+    const approverIds = Array.from(
+      new Set(
+        employeeApps
+          .map((a) => a.current_approver_login_id)
+          .filter(Boolean) as string[]
+      )
+    );
+    const approverNameMap: Record<string, string> = {};
+    if (approverIds.length > 0) {
+      const { data: people } = await db
+        .from("people")
+        .select("login_id, name")
+        .in("login_id", approverIds);
+      for (const p of people || []) {
+        approverNameMap[p.login_id] = p.name;
+      }
+    }
+
+    const { count: pendingInboxCount } = await db
+      .from("applications")
+      .select("id", { count: "exact", head: true })
+      .eq("current_approver_login_id", session.login_id)
+      .eq("status", "in_review");
+
+    const searchParams = await props.searchParams;
+    const activeTab = searchParams.type || "all";
+
+    return (
+      <EmployeeDashboard
+        session={session}
+        balances={balances}
+        person={person}
+        applications={employeeApps}
+        approverNameMap={approverNameMap}
+        pendingInboxCount={pendingInboxCount || 0}
+        activeTab={activeTab}
+      />
+    );
   }
 
   const { type = "medical" } = await props.searchParams;

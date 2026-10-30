@@ -123,7 +123,8 @@ export async function generateApplicationPdf(
   });
 
   const snap = app.applicant_snapshot;
-  page.drawText(`Student Name: ${sanitizePdfText(snap.name)}`, {
+  const isEmployee = ["employee_general", "employee_leave", "hod_general", "hod_leave"].includes(app.type);
+  page.drawText(`${isEmployee ? "Employee Name" : "Student Name"}: ${sanitizePdfText(snap.name)}`, {
     x: 55,
     y: height - 245,
     size: 10,
@@ -131,7 +132,7 @@ export async function generateApplicationPdf(
     color: primaryColor,
   });
 
-  page.drawText(`PRN / Roll No: ${snap.login_id}`, {
+  page.drawText(`${isEmployee ? "Employee / Login ID" : "PRN / Roll No"}: ${snap.login_id}`, {
     x: 55,
     y: height - 262,
     size: 10,
@@ -139,7 +140,7 @@ export async function generateApplicationPdf(
     color: primaryColor,
   });
 
-  page.drawText(`Department & Batch: ${snap.department || "CSE"} (${snap.batch || "2024-28"})`, {
+  page.drawText(isEmployee ? `Department: ${snap.department || "General"}` : `Department & Batch: ${snap.department || "CSE"} (${snap.batch || "2024-28"})`, {
     x: 55,
     y: height - 279,
     size: 10,
@@ -147,7 +148,7 @@ export async function generateApplicationPdf(
     color: primaryColor,
   });
 
-  page.drawText(`Semester & Section: Semester ${snap.semester || 1} - Sec ${snap.section || "A"}`, {
+  page.drawText(isEmployee ? `Designation / Group: ${snap.designation || "Faculty"} (Sat: ${(snap.saturday_group || "odd").toUpperCase()} Group)` : `Semester & Section: Semester ${snap.semester || 1} - Sec ${snap.section || "A"}`, {
     x: 55,
     y: height - 296,
     size: 10,

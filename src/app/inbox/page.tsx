@@ -79,6 +79,12 @@ export default async function InboxPage(props: {
             >
               Profile
             </Link>
+            <Link
+              href="/"
+              className="text-xs font-semibold px-2.5 py-1.5 bg-slate-900 text-white rounded hover:bg-slate-800 transition"
+            >
+              My Applications &amp; Leave
+            </Link>
             <form action="/auth/logout" method="post">
               <button
                 type="submit"
@@ -176,7 +182,7 @@ export default async function InboxPage(props: {
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 text-xs uppercase font-medium">
                 <tr>
-                  <th className="px-5 py-3">Applicant Student</th>
+                  <th className="px-5 py-3">Applicant</th>
                   <th className="px-5 py-3">Subject</th>
                   <th className="px-5 py-3">Submitted</th>
                   <th className="px-5 py-3">Status</th>
@@ -191,7 +197,7 @@ export default async function InboxPage(props: {
                         {app.applicant_snapshot.name}
                       </p>
                       <p className="text-xs text-slate-500 font-mono">
-                        {app.applicant_snapshot.login_id} • {app.applicant_snapshot.department}
+                        {app.applicant_snapshot.login_id} • {app.applicant_snapshot.department}{app.applicant_snapshot.designation ? ` (${app.applicant_snapshot.designation})` : ""}
                       </p>
                     </td>
                     <td className="px-5 py-4">

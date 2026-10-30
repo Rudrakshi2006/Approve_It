@@ -9,6 +9,7 @@ import { createSignatureSignedUrl } from "@/lib/signature";
 import { AttachmentItem } from "./AttachmentItem";
 import { ReturnedEditActions, WithdrawOnlyAction } from "./ReturnedEditActions";
 import { UnifiedThread } from "@/components/UnifiedThread";
+import { LeaveDetailsCard } from "@/components/LeaveDetailsCard";
 
 export default async function ApplicationStatusPage(props: {
   params: Promise<{ id: string }>;
@@ -267,6 +268,11 @@ export default async function ApplicationStatusPage(props: {
             </div>
           ) : null}
         </div>
+
+        {/* LEAVE DETAILS & BALANCE CARD (Faculty & Staff) */}
+        {(app.type === "employee_leave" || app.type === "hod_leave") && (
+          <LeaveDetailsCard payload={app.payload} status={app.status} />
+        )}
 
         {/* Returned / Hold Edit Box (Test A8, A9) */}
         {app.status === "returned" && (

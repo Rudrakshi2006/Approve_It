@@ -204,7 +204,7 @@ export function ReviewActions({
             onClick={() => handleAction("forward")}
             className="bg-indigo-700 hover:bg-indigo-800 disabled:opacity-50 text-white text-xs font-bold px-5 py-2.5 rounded shadow-sm transition flex items-center gap-1.5"
           >
-            {submitting ? "Processing..." : "➡️ Verify & Forward to Incharge"}
+            {submitting ? "Processing..." : `➡️ ${stepConfig?.decision_label || "Verify & Forward"}`}
           </button>
         ) : (
           <button
@@ -225,7 +225,7 @@ export function ReviewActions({
             onClick={() => handleAction("return")}
             className="bg-slate-700 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-bold px-4 py-2.5 rounded shadow-sm transition"
           >
-            {submitting ? "Processing..." : "↩ Hold / Return to Student"}
+            {submitting ? "Processing..." : "↩ Hold / Return to Applicant"}
           </button>
         )}
 

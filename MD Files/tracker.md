@@ -83,12 +83,12 @@
 - [x] 7.2 Database migration `0005_phase7_faculty_applications.sql` & seeds
 - [x] 7.3 `src/lib/leave/` pure logic (`working-days.ts`, `balance.ts`, `deduct.ts`, `overlap.ts`)
 - [x] 7.4 Workflow engine extension (Director atomic deduction, forward-only HOD leave, return routing)
-- [ ] 7.5 API endpoints (`POST /api/leave/preview`, employee submit, decision with signature checkbox)
-- [ ] 7.6 Apply-side UI ("My Applications" General and Leave blocks with live balance card & preview)
-- [ ] 7.7 Approver-side UI (3-section Approvals inbox, Leave review screen with balance & unpaid warning, forward-only panel)
-- [ ] 7.8 Admin screens (`/admin/leave-balances`, `/admin/holidays`, `/admin/settings`)
-- [ ] 7.9 Notifications & PDF export extension (balance snapshot, working days, excluded breakdown)
-- [ ] 7.10 Comprehensive Vitest test suite (dates, working days, accrual, deduction, chains, permissions)
+- [x] 7.5 API endpoints (`POST /api/leave/preview`, employee submit, decision with signature checkbox)
+- [x] 7.6 Apply-side UI ("My Applications" General and Leave blocks with live balance card & preview)
+- [x] 7.7 Approver-side UI (3-section Approvals inbox, Leave review screen with balance & unpaid warning, forward-only panel)
+- [x] 7.8 Admin screens (`/admin/leave-balances`, `/admin/holidays`, `/admin/settings`)
+- [x] 7.9 Notifications & PDF export extension (balance snapshot, working days, excluded breakdown)
+- [x] 7.10 Comprehensive Vitest test suite (dates, working days, accrual, deduction, chains, permissions)
 
 ### Phase 6, Hardening & go-live
 - [ ] EkLink handshake in production (all 12 tests in §3 green)
