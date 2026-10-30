@@ -6,19 +6,39 @@ import { formatToIST } from "@/lib/date";
 import { VerifiedStamp } from "./VerifiedStamp";
 import type { TimelineItem } from "@/lib/thread";
 
+const DESIGNATION_LABELS: Record<string, string> = {
+  admin_staff: "Administration Staff",
+  hackathon_incharge: "Hackathon Incharge",
+  class_teacher: "Course Faculty / Class Teacher",
+  hod: "Head of Department (HOD)",
+  director: "Director",
+  exam_cell: "Examination Cell",
+};
+
+export interface MentionCandidate {
+  login_id: string;
+  name: string;
+  roleLabel: string;
+}
+
 export function UnifiedThread({
   applicationId,
   timeline,
   canReply,
   signatureUrls = {},
+  actorNames = {},
+  mentionCandidates = [],
 }: {
   applicationId: string;
   timeline: TimelineItem[];
   canReply: boolean;
   signatureUrls?: Record<string, string>;
+  actorNames?: Record<string, string>;
+  mentionCandidates?: MentionCandidate[];
 }) {
   const router = useRouter();
   const [message, setMessage] = useState("");
+  const [taggedLoginId, setTaggedLoginId] = useState<string>("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +53,10 @@ export function UnifiedThread({
       const res = await fetch(`/api/applications/${applicationId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: message.trim() }),
+        body: JSON.stringify({
+          body: message.trim(),
+          tagged_login_id: taggedLoginId || undefined,
+        }),
       });
 
       const data = await res.json();
@@ -44,6 +67,7 @@ export function UnifiedThread({
       }
 
       setMessage("");
+      setTaggedLoginId("");
       setSending(false);
       router.refresh();
     } catch {
@@ -63,6 +87,8 @@ export function UnifiedThread({
         {timeline.map((item) => {
           if (item.kind === "step") {
             const sigUrl = item.signature_path ? signatureUrls[item.signature_path] : null;
+            const actorName = actorNames[item.actor_login_id] || item.actor_login_id;
+            const designation = DESIGNATION_LABELS[item.step_key] || item.step_key;
 
             return (
               <div
@@ -73,8 +99,8 @@ export function UnifiedThread({
                   <span className="text-xs font-bold uppercase tracking-wider text-slate-900 bg-slate-100 px-2 py-0.5 rounded">
                     {item.decision}
                   </span>
-                  <span className="text-xs text-slate-600 font-medium">
-                    by {item.actor_login_id}
+                  <span className="text-xs text-slate-700 font-semibold">
+                    by {actorName}
                   </span>
                   <span className="text-xs text-slate-400">• {formatToIST(item.at)}</span>
                 </div>
@@ -88,8 +114,8 @@ export function UnifiedThread({
                 {item.verification_id && (
                   <div className="mt-2">
                     <VerifiedStamp
-                      name={item.actor_login_id}
-                      designation={item.step_key}
+                      name={actorName}
+                      designation={designation}
                       verificationId={item.verification_id}
                       timestamp={item.at}
                       signatureUrl={sigUrl}
@@ -102,6 +128,8 @@ export function UnifiedThread({
           }
 
           if (item.kind === "message") {
+            const authorName = actorNames[item.author_login_id] || item.author_login_id;
+
             return (
               <div
                 key={item.id}
@@ -109,7 +137,7 @@ export function UnifiedThread({
               >
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
-                    💬 Note from {item.author_login_id}
+                    💬 Note from {authorName}
                   </span>
                   <span className="text-xs text-slate-400">• {formatToIST(item.at)}</span>
                 </div>
@@ -153,11 +181,59 @@ export function UnifiedThread({
           <label className="block text-xs font-semibold text-slate-700 mb-1.5">
             Post a Message or Clarification in this Thread
           </label>
+
+          {/* Mention / Tag candidates in current flow */}
+          {mentionCandidates && mentionCandidates.length > 0 && (
+            <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-semibold text-slate-500 mr-1 flex items-center gap-0.5">
+                <span>@</span> Tag &amp; Notify:
+              </span>
+              {mentionCandidates.map((c) => {
+                const isSelected = taggedLoginId === c.login_id;
+                return (
+                  <button
+                    key={c.login_id}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        setTaggedLoginId("");
+                      } else {
+                        setTaggedLoginId(c.login_id);
+                        if (!message.includes(`@${c.name}`)) {
+                          setMessage((prev) => (prev ? `@${c.name} ${prev}` : `@${c.name} `));
+                        }
+                      }
+                    }}
+                    className={`text-[11px] px-2.5 py-1 rounded-full border transition flex items-center gap-1 font-medium ${
+                      isSelected
+                        ? "bg-indigo-600 text-white border-indigo-700 shadow-xs"
+                        : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
+                    }`}
+                  >
+                    <span>@{c.name}</span>
+                    <span className={`text-[9px] ${isSelected ? "text-indigo-100" : "text-slate-400"}`}>
+                      ({c.roleLabel})
+                    </span>
+                  </button>
+                );
+              })}
+              {taggedLoginId && (
+                <button
+                  type="button"
+                  onClick={() => setTaggedLoginId("")}
+                  className="text-[10px] text-rose-500 hover:text-rose-700 underline ml-1"
+                >
+                  Clear Tag
+                </button>
+              )}
+            </div>
+          )}
+
           <textarea
             rows={2}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="Type a message (e.g. 'Uploaded the prescription with doctor clinic seal')..."
+            placeholder="Type a message (e.g. 'Uploaded the invitation letter with official organizers stamp')..."
             className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white mb-2"
           />
 

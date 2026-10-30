@@ -4,12 +4,14 @@ import { requireApiSession } from "@/lib/auth";
 import { SESSION_COOKIE } from "@/lib/session";
 import { getDb } from "@/lib/db";
 import { getApplicationById } from "@/lib/repos/applications";
+import { createNotification } from "@/lib/notifications";
 
 const MessageSchema = z.object({
   body: z
     .string()
     .min(1, "Message cannot be empty")
     .max(2000, "Message cannot exceed 2000 characters"),
+  tagged_login_id: z.string().optional().nullable(),
 });
 
 export async function POST(
@@ -66,13 +68,15 @@ export async function POST(
     );
   }
 
+  const cleanBody = parseResult.data.body.trim();
+
   const db = getDb();
   const { data: newMsg, error: insertError } = await db
     .from("application_messages")
     .insert({
       application_id: app.id,
       author_login_id: session.login_id,
-      body: parseResult.data.body.trim(),
+      body: cleanBody,
     })
     .select()
     .single();
@@ -82,6 +86,39 @@ export async function POST(
       { error: `Failed to post message: ${insertError?.message || "Unknown error"}` },
       { status: 500 }
     );
+  }
+
+  // 3. Determine notification recipient(s)
+  // If a specific person was tagged/mentioned, notify them directly if they are an involved participant
+  const preview = cleanBody.length > 60 ? cleanBody.slice(0, 60) + "..." : cleanBody;
+  const taggedId = parseResult.data.tagged_login_id?.trim();
+
+  // Allowed participants: applicant, steps actors, or current approver
+  const allowedRecipients = new Set([
+    app.applicant_login_id,
+    ...app.steps.map((s) => s.actor_login_id),
+    ...(app.current_approver_login_id ? [app.current_approver_login_id] : []),
+  ]);
+
+  if (taggedId && allowedRecipients.has(taggedId) && taggedId !== session.login_id) {
+    // Direct mention notification
+    await createNotification({
+      recipient_login_id: taggedId,
+      application_id: app.id,
+      kind: "comment",
+      message: `${session.name} mentioned you in "${app.subject}": "${preview}"`,
+    });
+  } else {
+    // Default fallback to other party
+    const notifyRecipient = isApplicant ? app.current_approver_login_id : app.applicant_login_id;
+    if (notifyRecipient && notifyRecipient !== session.login_id) {
+      await createNotification({
+        recipient_login_id: notifyRecipient,
+        application_id: app.id,
+        kind: "comment",
+        message: `New note on "${app.subject}" from ${session.name}: "${preview}"`,
+      });
+    }
   }
 
   return NextResponse.json(newMsg, { status: 201 });

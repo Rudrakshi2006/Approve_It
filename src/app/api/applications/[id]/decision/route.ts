@@ -13,11 +13,13 @@ import {
   type ApproverResolutionContext,
 } from "@/lib/workflow/resolve-approver";
 import { generateVerificationId } from "@/lib/stamp/verification-id";
+import { createNotification } from "@/lib/notifications";
 
 const DecisionSchema = z.object({
-  action: z.enum(["approve", "reject", "return"]),
+  action: z.enum(["approve", "reject", "return", "forward"]),
   comment: z.string().max(2000).optional().nullable(),
   include_signature: z.boolean().optional(),
+  attendance_percentage: z.number().min(0).max(100).optional().nullable(),
 });
 
 export async function POST(
@@ -49,7 +51,7 @@ export async function POST(
     );
   }
 
-  const { action, comment, include_signature } = parseResult.data;
+  const { action, comment, include_signature, attendance_percentage } = parseResult.data;
 
   // 1. Fetch application details
   const app = await getApplicationById(id);
@@ -71,12 +73,13 @@ export async function POST(
     app.chain_snapshot,
     session.login_id,
     action,
-    comment
+    comment,
+    { attendance_percentage }
   );
 
   if (!transition.ok) {
     return NextResponse.json(
-      { error: transition.message },
+      { error: transition.message, code: transition.code },
       { status: transition.httpStatus }
     );
   }
@@ -144,8 +147,8 @@ export async function POST(
   }
 
   // 5. Generate unique verification ID for this approver decision
-  // Stamped with official digital seal for both approve and reject decisions
-  const isStamped = action === "approve" || action === "reject";
+  // Stamped with official digital seal for approve, forward, and reject decisions
+  const isStamped = action === "approve" || action === "reject" || action === "forward";
   const verificationId = isStamped ? generateVerificationId() : null;
 
   // Retrieve approver signature image from profile if enabled (default true)
@@ -187,6 +190,61 @@ export async function POST(
       { error: result.error || "Database transition failed" },
       { status: 500 }
     );
+  }
+
+  // 7. Dispatch lifecycle notifications
+  const urgentPrefix = app.urgent ? "⚡ URGENT: " : "";
+  if (action === "approve") {
+    if (transition.new_status === "approved") {
+      await createNotification({
+        recipient_login_id: app.applicant_login_id,
+        application_id: app.id,
+        kind: "approved",
+        message: `🎉 Your application "${app.subject}" has been fully approved!`,
+      });
+    } else if (nextApproverLoginId) {
+      await createNotification({
+        recipient_login_id: nextApproverLoginId,
+        application_id: app.id,
+        kind: "forwarded",
+        message: `${urgentPrefix}Application "${app.subject}" forwarded to you by ${session.name}`,
+      });
+      await createNotification({
+        recipient_login_id: app.applicant_login_id,
+        application_id: app.id,
+        kind: "forwarded",
+        message: `Your application "${app.subject}" was approved by ${session.name} and forwarded to the next reviewer.`,
+      });
+    }
+  } else if (action === "forward") {
+    if (nextApproverLoginId) {
+      await createNotification({
+        recipient_login_id: nextApproverLoginId,
+        application_id: app.id,
+        kind: "forwarded",
+        message: `${urgentPrefix}Application "${app.subject}" verified & forwarded to you by ${session.name}`,
+      });
+      await createNotification({
+        recipient_login_id: app.applicant_login_id,
+        application_id: app.id,
+        kind: "forwarded",
+        message: `Your application "${app.subject}" attendance was verified by ${session.name} and forwarded to Hackathon Incharge.`,
+      });
+    }
+  } else if (action === "reject") {
+    await createNotification({
+      recipient_login_id: app.applicant_login_id,
+      application_id: app.id,
+      kind: "rejected",
+      message: `Your application "${app.subject}" was rejected by ${session.name}: "${comment || 'No reason provided'}"`,
+    });
+  } else if (action === "return") {
+    await createNotification({
+      recipient_login_id: app.applicant_login_id,
+      application_id: app.id,
+      kind: "returned",
+      message: `Your application "${app.subject}" was returned for revision by ${session.name}: "${comment || 'Please update'}"`,
+    });
   }
 
   return NextResponse.json({

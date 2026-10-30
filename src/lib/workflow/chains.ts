@@ -28,9 +28,12 @@ export const StepConfigSchema = z.object({
   step_key: z.string().min(1),
   label: z.string().min(1),
   resolver: ResolverSchema,
-  can_reject: z.boolean().default(true),
-  comment_required_on_reject: z.boolean().default(false),
-  can_return: z.boolean().default(true),
+  can_reject: z.boolean().optional(),
+  can_return: z.boolean().optional(),
+  comment_required_on_reject: z.boolean().optional(),
+  comment_required_on_forward: z.boolean().optional(),
+  attendance_required: z.boolean().optional(),
+  decision_label: z.string().optional(),
 });
 
 export type StepConfig = z.infer<typeof StepConfigSchema>;

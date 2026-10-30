@@ -2,7 +2,9 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { requirePageSession } from "@/lib/auth";
 import { listInboxForApprover } from "@/lib/repos/applications";
-import { formatToIST } from "@/lib/date";
+import { getDb } from "@/lib/db";
+import { formatToIST, formatDatesInText } from "@/lib/date";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export default async function InboxPage(props: {
   searchParams: Promise<{ tab?: string }>;
@@ -14,12 +16,39 @@ export default async function InboxPage(props: {
     redirect("/");
   }
 
+  const isAdminStaff = session.eklink_role === "admin_staff" || session.login_id === "STA5001";
+
   const { tab = "pending" } = await props.searchParams;
-  const activeTab = (["pending", "approved", "rejected", "returned"].includes(tab)
-    ? tab
-    : "pending") as "pending" | "approved" | "rejected" | "returned";
+  const activeTab = (
+    isAdminStaff
+      ? ["pending", "approved"].includes(tab)
+        ? tab
+        : "pending"
+      : ["pending", "approved", "rejected", "returned"].includes(tab)
+      ? tab
+      : "pending"
+  ) as "pending" | "approved" | "rejected" | "returned";
 
   const applications = await listInboxForApprover(session.login_id, activeTab);
+
+  const db = getDb();
+  const approverIds = Array.from(
+    new Set(
+      applications
+        .map((a) => a.current_approver_login_id)
+        .filter(Boolean) as string[]
+    )
+  );
+  const approverNameMap: Record<string, string> = {};
+  if (approverIds.length > 0) {
+    const { data: people } = await db
+      .from("people")
+      .select("login_id, name")
+      .in("login_id", approverIds);
+    for (const p of people || []) {
+      approverNameMap[p.login_id] = p.name;
+    }
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
@@ -36,6 +65,8 @@ export default async function InboxPage(props: {
           </div>
 
           <div className="flex items-center gap-4 text-sm">
+            <NotificationBell loginId={session.login_id} />
+
             <div className="text-right">
               <p className="font-semibold text-slate-900">{session.name}</p>
               <p className="text-xs text-slate-500 font-mono">
@@ -63,10 +94,12 @@ export default async function InboxPage(props: {
       <main className="max-w-6xl mx-auto px-4 py-8">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-            Approver Inbox
+            {isAdminStaff ? "Administration Staff Portal" : "Approver Inbox"}
           </h1>
           <p className="text-sm text-slate-600 mt-1">
-            Review and digitally verify student leave applications assigned to your step.
+            {isAdminStaff
+              ? "Verify student ERP attendance records and forward applications to the designated incharge."
+              : "Review and digitally verify student leave applications assigned to your step."}
           </p>
         </div>
 
@@ -80,7 +113,7 @@ export default async function InboxPage(props: {
                 : "border-transparent text-slate-500 hover:text-slate-700"
             }`}
           >
-            Pending Actions
+            {isAdminStaff ? "Pending Verification" : "Pending Actions"}
           </Link>
           <Link
             href="/inbox?tab=approved"
@@ -90,38 +123,50 @@ export default async function InboxPage(props: {
                 : "border-transparent text-slate-500 hover:text-slate-700"
             }`}
           >
-            Approved by You
+            {isAdminStaff ? "Verified & Forwarded (Done)" : "Approved by You"}
           </Link>
-          <Link
-            href="/inbox?tab=rejected"
-            className={`px-4 py-2 text-sm font-semibold border-b-2 transition ${
-              activeTab === "rejected"
-                ? "border-slate-900 text-slate-900"
-                : "border-transparent text-slate-500 hover:text-slate-700"
-            }`}
-          >
-            Rejected
-          </Link>
-          <Link
-            href="/inbox?tab=returned"
-            className={`px-4 py-2 text-sm font-semibold border-b-2 transition ${
-              activeTab === "returned"
-                ? "border-slate-900 text-slate-900"
-                : "border-transparent text-slate-500 hover:text-slate-700"
-            }`}
-          >
-            On Hold / Returned
-          </Link>
+          {!isAdminStaff && (
+            <>
+              <Link
+                href="/inbox?tab=rejected"
+                className={`px-4 py-2 text-sm font-semibold border-b-2 transition ${
+                  activeTab === "rejected"
+                    ? "border-slate-900 text-slate-900"
+                    : "border-transparent text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                Rejected
+              </Link>
+              <Link
+                href="/inbox?tab=returned"
+                className={`px-4 py-2 text-sm font-semibold border-b-2 transition ${
+                  activeTab === "returned"
+                    ? "border-slate-900 text-slate-900"
+                    : "border-transparent text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                On Hold / Returned
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Applications List */}
         {applications.length === 0 ? (
           <div className="bg-white border border-slate-200 rounded-lg p-12 text-center">
             <h3 className="font-semibold text-slate-800 text-base mb-1">
-              No Applications in &ldquo;{activeTab.replace("_", " ")}&rdquo;
+              {isAdminStaff
+                ? activeTab === "pending"
+                  ? "No Applications Pending Verification"
+                  : "No Forwarded Applications Yet"
+                : `No Applications in "${activeTab.replace("_", " ")}"`}
             </h3>
             <p className="text-slate-500 text-sm max-w-sm mx-auto">
-              {activeTab === "pending"
+              {isAdminStaff
+                ? activeTab === "pending"
+                  ? "All caught up! You have zero student applications awaiting ERP attendance verification."
+                  : "No applications have been verified and forwarded by you yet."
+                : activeTab === "pending"
                 ? "You have zero applications currently awaiting your verification. All caught up!"
                 : "No historical records found in this category."}
             </p>
@@ -152,11 +197,11 @@ export default async function InboxPage(props: {
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2">
                         {app.urgent && (
-                          <span className="bg-rose-100 text-rose-700 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase">
-                            Urgent
+                          <span className="bg-rose-100 text-rose-700 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase flex items-center gap-1">
+                            ⚡ Urgent
                           </span>
                         )}
-                        <span className="font-medium text-slate-900">{app.subject}</span>
+                        <span className="font-medium text-slate-900">{formatDatesInText(app.subject)}</span>
                       </div>
                       <span className="text-xs text-slate-400 capitalize">
                         Type: {app.type.replace("_", " ")}
@@ -167,33 +212,42 @@ export default async function InboxPage(props: {
                     </td>
                     <td className="px-5 py-4">
                       {app.status === "in_review" && (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                          Awaiting Decision
-                        </span>
+                        <div>
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                            {app.current_approver_login_id === session.login_id
+                              ? "Action Required (You)"
+                              : `Pending with: ${approverNameMap[app.current_approver_login_id || ""] || "Approver"}`}
+                          </span>
+                          {app.chain_snapshot?.[app.current_step]?.label && (
+                            <span className="block text-[11px] text-slate-500 mt-0.5 ml-1">
+                              ({app.chain_snapshot[app.current_step].label})
+                            </span>
+                          )}
+                        </div>
                       )}
                       {app.status === "approved" && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
-                          Approved
+                          ✓ Approved
                         </span>
                       )}
                       {app.status === "rejected" && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800">
-                          Rejected
+                          ✕ Rejected
                         </span>
                       )}
                       {app.status === "returned" && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800">
-                          Returned
+                          ↩ On Hold
                         </span>
                       )}
                     </td>
                     <td className="px-5 py-4 text-right">
                       <Link
                         href={`/inbox/${app.id}`}
-                        className="inline-block bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-3 py-1.5 rounded transition"
+                        className="text-xs font-bold text-slate-900 hover:text-slate-700 hover:underline"
                       >
-                        Review →
+                        Review &amp; Verify →
                       </Link>
                     </td>
                   </tr>
