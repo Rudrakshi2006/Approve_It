@@ -9,7 +9,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "seed:people": "tsx --env-file=.env.local scripts/seed-people.ts"
+    "seed:people": "tsx --env-file=.env.local scripts/seed-people.ts",
+    "seed:phase7": "tsx --env-file=.env.local scripts/seed-phase7.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",

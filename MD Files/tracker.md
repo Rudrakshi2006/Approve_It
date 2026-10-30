@@ -80,7 +80,7 @@
 ### Phase 7, Employee applications & Leave ledger
 - [x] 7.0 Docs updates (`rules.md`, `planning.md`, `tracker.md`, `README.md`)
 - [x] 7.1 `src/lib/dates.ts` strict `dd-mm-yyyy`, IST timezone & working days engine
-- [ ] 7.2 Database migration `0005_phase7_faculty_applications.sql` & seeds
+- [x] 7.2 Database migration `0005_phase7_faculty_applications.sql` & seeds
 - [ ] 7.3 `src/lib/leave/` pure logic (`working-days.ts`, `balance.ts`, `deduct.ts`, `overlap.ts`)
 - [ ] 7.4 Workflow engine extension (Director atomic deduction, forward-only HOD leave, return routing)
 - [ ] 7.5 API endpoints (`POST /api/leave/preview`, employee submit, decision with signature checkbox)
