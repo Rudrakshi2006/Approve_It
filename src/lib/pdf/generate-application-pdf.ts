@@ -1,5 +1,5 @@
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
-import { formatToIST } from "../date";
+import { formatToIST, formatDatesInText } from "../date";
 import type { ApplicationDetail } from "../repos/types";
 import { getDb } from "../db";
 
@@ -11,6 +11,8 @@ function sanitizePdfText(text?: string | null): string {
 
 export interface GeneratePdfOptions {
   downloadAttachment?: (storagePath: string) => Promise<Blob | null>;
+  downloadSignature?: (storagePath: string) => Promise<Blob | null>;
+  actorNames?: Record<string, string>;
 }
 
 export async function generateApplicationPdf(
@@ -76,7 +78,7 @@ export async function generateApplicationPdf(
     color: grayColor,
   });
 
-  const cleanSubject = sanitizePdfText(app.subject);
+  const cleanSubject = sanitizePdfText(formatDatesInText(app.subject));
   page.drawText(cleanSubject.slice(0, 75), {
     x: 55,
     y: height - 145,
@@ -162,18 +164,118 @@ export async function generateApplicationPdf(
     color: primaryColor,
   });
 
+  // Fetch actor names if not supplied
+  const actorNames: Record<string, string> = { ...options?.actorNames };
+  try {
+    const db = getDb();
+    const allActorIds = Array.from(
+      new Set([
+        ...app.steps.map((s) => s.actor_login_id),
+        app.applicant_login_id,
+      ])
+    );
+    const missingActorIds = allActorIds.filter((id) => !actorNames[id]);
+    if (missingActorIds.length > 0) {
+      const { data: people } = await db
+        .from("people")
+        .select("login_id, name")
+        .in("login_id", missingActorIds);
+      for (const p of people || []) {
+        actorNames[p.login_id] = p.name;
+      }
+    }
+  } catch {
+    // Graceful fallback for offline / unit test mock contexts
+  }
+
+  const roleKeyToName: Record<string, string> = {
+    admin_staff: "Administration Staff",
+    hackathon_incharge: "Hackathon Incharge",
+    class_teacher: "Class Teacher",
+    hod: "Head of Department (HOD)",
+    director: "Director",
+    account_officer: "Accounts Officer",
+  };
+
   let currentY = height - 365;
 
   for (const step of app.steps) {
-    if (currentY < 120) {
-      page = pdfDoc.addPage([595.28, 841.89]);
-      currentY = height - 60;
-    }
-
+    const isSubmission = step.decision === "submitted";
     const isApprovedOrForwarded =
       step.decision === "approved" || step.decision === "forwarded";
 
-    const boxHeight = step.verification_id ? 72 : 45;
+    // Designation & Actor Name
+    const stepConfig = app.chain_snapshot ? app.chain_snapshot[step.step_index] : null;
+    const designation =
+      stepConfig?.label ||
+      roleKeyToName[step.step_key] ||
+      step.step_key.replace(/_/g, " ").toUpperCase();
+
+    const actorName =
+      actorNames[step.actor_login_id] ||
+      (isSubmission ? app.applicant_snapshot?.name : null) ||
+      step.actor_login_id;
+
+    // Check and download signature image if present
+    let embeddedSig: any = null;
+    if (step.signature_path) {
+      try {
+        let sigData: Blob | null = null;
+        if (options?.downloadSignature) {
+          sigData = await options.downloadSignature(step.signature_path);
+        } else {
+          const db = getDb();
+          const { data, error } = await db.storage
+            .from("signatures")
+            .download(step.signature_path);
+          if (!error && data) {
+            sigData = data;
+          }
+        }
+        if (sigData) {
+          const buffer = await sigData.arrayBuffer();
+          const sigBytes = new Uint8Array(buffer);
+          try {
+            if (step.signature_path.toLowerCase().endsWith(".png")) {
+              embeddedSig = await pdfDoc.embedPng(sigBytes);
+            } else {
+              embeddedSig = await pdfDoc.embedJpg(sigBytes);
+            }
+          } catch {
+            try {
+              embeddedSig = await pdfDoc.embedPng(sigBytes);
+            } catch {
+              try {
+                embeddedSig = await pdfDoc.embedJpg(sigBytes);
+              } catch {
+                embeddedSig = null;
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Could not load signature for step:", err);
+      }
+    }
+
+    // Determine box height
+    let boxHeight = 50;
+    if (isSubmission) {
+      boxHeight = step.comment ? 58 : 46;
+    } else {
+      if (embeddedSig) {
+        boxHeight = 78;
+      } else if (step.verification_id && step.comment) {
+        boxHeight = 70;
+      } else if (step.verification_id || step.comment) {
+        boxHeight = 58;
+      }
+    }
+
+    if (currentY - boxHeight < 60) {
+      page = pdfDoc.addPage([595.28, 841.89]);
+      currentY = height - 60;
+    }
 
     page.drawRectangle({
       x: 40,
@@ -181,48 +283,116 @@ export async function generateApplicationPdf(
       width: width - 80,
       height: boxHeight,
       color: lightBgColor,
-      borderColor: isApprovedOrForwarded ? emeraldColor : borderColor,
+      borderColor: isSubmission
+        ? rgb(0.7, 0.75, 0.82)
+        : isApprovedOrForwarded
+        ? emeraldColor
+        : borderColor,
       borderWidth: 1,
     });
 
-    const stepTitle = `[Step ${step.step_index + 1}] ${step.step_key.toUpperCase()} - Decision: ${step.decision.toUpperCase()}`;
-    page.drawText(stepTitle, {
-      x: 55,
-      y: currentY - 18,
-      size: 9.5,
-      font: helveticaBold,
-      color: isApprovedOrForwarded ? emeraldColor : primaryColor,
-    });
-
-    page.drawText(`Actor: ${step.actor_login_id}  |  Date: ${formatToIST(step.at)}`, {
-      x: 55,
-      y: currentY - 32,
-      size: 8.5,
-      font: helvetica,
-      color: grayColor,
-    });
-
-    if (step.comment) {
-      page.drawText(`Remark: "${sanitizePdfText(step.comment).slice(0, 80)}"`, {
+    if (isSubmission) {
+      page.drawText("APPLICATION SUBMISSION (APPLICANT)", {
         x: 55,
-        y: currentY - 45,
-        size: 8.5,
-        font: helvetica,
+        y: currentY - 17,
+        size: 9.5,
+        font: helveticaBold,
         color: primaryColor,
       });
-    }
 
-    if (step.verification_id) {
-      page.drawText(`Digital Verification Stamp ID: ${step.verification_id}`, {
+      page.drawText(
+        `Submitted by: ${sanitizePdfText(actorName)} (${step.actor_login_id})  |  Date: ${formatToIST(step.at)}`,
+        {
+          x: 55,
+          y: currentY - 31,
+          size: 8.5,
+          font: helvetica,
+          color: grayColor,
+        }
+      );
+
+      if (step.comment) {
+        page.drawText(
+          `Applicant Note: "${sanitizePdfText(step.comment).slice(0, 95)}"`,
+          {
+            x: 55,
+            y: currentY - 45,
+            size: 8.5,
+            font: helvetica,
+            color: primaryColor,
+          }
+        );
+      }
+    } else {
+      const decisionDisplay =
+        step.decision === "forwarded" ? "FORWARDED" : step.decision.toUpperCase();
+      const stepTitle = `[Step ${step.step_index + 1}] ${designation} - ${decisionDisplay}`;
+
+      page.drawText(stepTitle, {
         x: 55,
-        y: currentY - 60,
-        size: 8.5,
-        font: courier,
-        color: emeraldColor,
+        y: currentY - 17,
+        size: 9.5,
+        font: helveticaBold,
+        color: isApprovedOrForwarded ? emeraldColor : primaryColor,
       });
+
+      page.drawText(
+        `Verified by: ${sanitizePdfText(actorName)} (${step.actor_login_id})  |  Date: ${formatToIST(step.at)}`,
+        {
+          x: 55,
+          y: currentY - 31,
+          size: 8.5,
+          font: helvetica,
+          color: grayColor,
+        }
+      );
+
+      let nextY = currentY - 45;
+      if (step.comment) {
+        const maxLen = embeddedSig ? 55 : 85;
+        page.drawText(`Remark: "${sanitizePdfText(step.comment).slice(0, maxLen)}"`, {
+          x: 55,
+          y: nextY,
+          size: 8.5,
+          font: helvetica,
+          color: primaryColor,
+        });
+        nextY -= 14;
+      }
+
+      if (step.verification_id) {
+        page.drawText(`Digital Stamp ID: ${step.verification_id}`, {
+          x: 55,
+          y: nextY,
+          size: 8.5,
+          font: courier,
+          color: emeraldColor,
+        });
+      }
+
+      if (embeddedSig) {
+        const sigBoxW = 100;
+        const sigBoxH = 38;
+        const sigDims = embeddedSig.scaleToFit(sigBoxW, sigBoxH);
+
+        page.drawImage(embeddedSig, {
+          x: width - 40 - 15 - sigDims.width,
+          y: currentY - boxHeight + 18 + (sigBoxH - sigDims.height) / 2,
+          width: sigDims.width,
+          height: sigDims.height,
+        });
+
+        page.drawText("Faculty Signature", {
+          x: width - 40 - 15 - sigBoxW / 2 - 25,
+          y: currentY - boxHeight + 8,
+          size: 7,
+          font: helveticaBold,
+          color: grayColor,
+        });
+      }
     }
 
-    currentY -= boxHeight + 12;
+    currentY -= boxHeight + 10;
   }
 
   // --- ATTACHMENTS MERGING ---

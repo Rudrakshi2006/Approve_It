@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 interface ReviewActionsProps {
   applicationId: string;
+  hasSignature?: boolean;
   stepConfig?: {
     can_reject?: boolean;
     can_return?: boolean;
@@ -15,11 +17,15 @@ interface ReviewActionsProps {
   } | null;
 }
 
-export function ReviewActions({ applicationId, stepConfig }: ReviewActionsProps) {
+export function ReviewActions({
+  applicationId,
+  hasSignature = false,
+  stepConfig,
+}: ReviewActionsProps) {
   const router = useRouter();
   const [comment, setComment] = useState("");
   const [attendance, setAttendance] = useState("");
-  const [includeSignature, setIncludeSignature] = useState(true);
+  const [includeSignature, setIncludeSignature] = useState(hasSignature);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,11 +43,6 @@ export function ReviewActions({ applicationId, stepConfig }: ReviewActionsProps)
           ? "A comment or rejection reason is mandatory when rejecting."
           : "A comment explaining what needs correction is mandatory when returning."
       );
-      return;
-    }
-
-    if (action === "forward" && stepConfig?.comment_required_on_forward && !comment.trim()) {
-      setError("An attendance verification note or comment is mandatory when forwarding.");
       return;
     }
 
@@ -140,10 +141,7 @@ export function ReviewActions({ applicationId, stepConfig }: ReviewActionsProps)
 
       <div className="mb-4">
         <label className="block text-xs font-semibold text-slate-700 mb-1">
-          {isForwardStep ? "Attendance Verification Remarks" : "Reviewer Comment / Instructions"}
-          {(!canReject || stepConfig?.comment_required_on_forward) && (
-            <span className="text-rose-600 font-bold ml-1">*</span>
-          )}
+          {isForwardStep ? "Attendance Remarks (Optional)" : "Reviewer Comment / Instructions"}
         </label>
         <textarea
           rows={3}
@@ -160,22 +158,41 @@ export function ReviewActions({ applicationId, stepConfig }: ReviewActionsProps)
 
       {/* Checkbox option to include profile signature */}
       <div className="mb-5 bg-slate-50 border border-slate-200 rounded p-3">
-        <label className="flex items-start gap-2.5 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={includeSignature}
-            onChange={(e) => setIncludeSignature(e.target.checked)}
-            className="w-4 h-4 mt-0.5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
-          />
-          <div>
-            <span className="text-xs font-semibold text-slate-800 block">
-              Attach my uploaded signature from profile
-            </span>
-            <span className="text-[11px] text-slate-500">
-              The digital verification seal with unique ID and timestamp will always be attached by default.
-            </span>
+        {hasSignature ? (
+          <label className="flex items-start gap-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={includeSignature}
+              onChange={(e) => setIncludeSignature(e.target.checked)}
+              className="w-4 h-4 mt-0.5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+            />
+            <div>
+              <span className="text-xs font-semibold text-slate-800 block">
+                Attach my uploaded signature from profile (✓ Added in Profile)
+              </span>
+              <span className="text-[11px] text-slate-500">
+                Your signature and digital verification seal with unique ID will be attached.
+              </span>
+            </div>
+          </label>
+        ) : (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div>
+              <span className="text-xs font-bold text-amber-900 block flex items-center gap-1.5">
+                <span>⚠️</span> Signature Not Added in Profile
+              </span>
+              <span className="text-[11px] text-amber-800 block mt-0.5">
+                First add your signature in your profile to attach it to your approvals.
+              </span>
+            </div>
+            <Link
+              href="/profile"
+              className="inline-flex items-center gap-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-1.5 rounded transition shrink-0"
+            >
+              Add Signature in Profile →
+            </Link>
           </div>
-        </label>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-3">

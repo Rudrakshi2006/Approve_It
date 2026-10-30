@@ -10,6 +10,12 @@ const SubmitMedicalSchema = z.object({
   class_teacher_login_id: z.string().min(1, "Please select a Class Teacher"),
   comment: z.string().max(2000).optional().nullable(),
   urgent: z.boolean().default(false),
+  payload: z
+    .object({
+      from_date: z.string().min(1, "Leave From Date is compulsory"),
+      to_date: z.string().min(1, "Leave To Date is compulsory"),
+    })
+    .catchall(z.unknown()),
   attachments: z
     .array(
       z.object({

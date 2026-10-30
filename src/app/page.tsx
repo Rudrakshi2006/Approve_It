@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { requirePageSession } from "@/lib/auth";
 import { listApplicationsByApplicant } from "@/lib/repos/applications";
-import { formatToIST } from "@/lib/date";
+import { getDb } from "@/lib/db";
+import { formatToIST, formatDatesInText } from "@/lib/date";
 import { NotificationBell } from "@/components/NotificationBell";
 
 export default async function HomePage(props: {
@@ -22,6 +23,25 @@ export default async function HomePage(props: {
 
   const allApplications = await listApplicationsByApplicant(session.login_id);
   const applications = allApplications.filter((a) => a.type === activeType);
+
+  const db = getDb();
+  const approverIds = Array.from(
+    new Set(
+      applications
+        .map((a) => a.current_approver_login_id)
+        .filter(Boolean) as string[]
+    )
+  );
+  const approverNameMap: Record<string, string> = {};
+  if (approverIds.length > 0) {
+    const { data: people } = await db
+      .from("people")
+      .select("login_id, name")
+      .in("login_id", approverIds);
+    for (const p of people || []) {
+      approverNameMap[p.login_id] = p.name;
+    }
+  }
 
   const typeConfig: Record<
     string,
@@ -211,7 +231,7 @@ export default async function HomePage(props: {
                             ⚡ Urgent
                           </span>
                         )}
-                        <span className="font-medium text-slate-900">{app.subject}</span>
+                        <span className="font-medium text-slate-900">{formatDatesInText(app.subject)}</span>
                       </div>
                       <span className="text-xs text-slate-400 font-mono">
                         ID: {app.id.slice(0, 8)}...
@@ -222,10 +242,17 @@ export default async function HomePage(props: {
                     </td>
                     <td className="px-5 py-4">
                       {app.status === "in_review" && (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                          In Review (Step {app.current_step + 1} of {app.chain_snapshot.length})
-                        </span>
+                        <div>
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                            Pending with: {approverNameMap[app.current_approver_login_id || ""] || "Approver"}
+                          </span>
+                          {app.chain_snapshot?.[app.current_step]?.label && (
+                            <span className="block text-[11px] text-slate-500 mt-0.5 ml-1">
+                              ({app.chain_snapshot[app.current_step].label})
+                            </span>
+                          )}
+                        </div>
                       )}
                       {app.status === "approved" && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">

@@ -63,6 +63,14 @@ export async function POST(
     );
   }
 
+  // 4. Cannot withdraw once Step 1 has already been approved / forwarded
+  if (app.current_step > 0) {
+    return NextResponse.json(
+      { error: "Application cannot be withdrawn once Step 1 verification has already been completed." },
+      { status: 409 }
+    );
+  }
+
   const db = getDb();
 
   // Save current approver to notify before clearing

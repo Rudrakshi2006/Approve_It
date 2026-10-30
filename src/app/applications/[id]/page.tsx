@@ -3,7 +3,7 @@ import Link from "next/link";
 import { requirePageSession } from "@/lib/auth";
 import { getApplicationById } from "@/lib/repos/applications";
 import { getDb } from "@/lib/db";
-import { formatToIST } from "@/lib/date";
+import { formatToIST, formatDatesInText } from "@/lib/date";
 import { buildUnifiedTimeline } from "@/lib/thread";
 import { createSignatureSignedUrl } from "@/lib/signature";
 import { AttachmentItem } from "./AttachmentItem";
@@ -46,6 +46,81 @@ export default async function ApplicationStatusPage(props: {
     }
   }
 
+  // Resolve real actor names for all participants in steps & messages
+  const allActorIds = Array.from(
+    new Set([
+      ...app.steps.map((s) => s.actor_login_id),
+      ...(messages || []).map((m: { author_login_id: string }) => m.author_login_id),
+      app.applicant_login_id,
+      ...(app.current_approver_login_id ? [app.current_approver_login_id] : []),
+    ])
+  );
+
+  const { data: peopleRows } = await db
+    .from("people")
+    .select("login_id, name")
+    .in("login_id", allActorIds);
+
+  const actorNames: Record<string, string> = {};
+  for (const p of peopleRows || []) {
+    actorNames[p.login_id] = p.name;
+  }
+
+  // Determine mention candidates (strictly limited to people involved up to current step)
+  const ROLE_DISPLAY_NAMES: Record<string, string> = {
+    admin_staff: "Administration Staff",
+    hackathon_incharge: "Hackathon Incharge",
+    class_teacher: "Class Teacher",
+    hod: "HOD",
+    director: "Director",
+    account_officer: "Accounts Officer",
+  };
+
+  const mentionCandidates: { login_id: string; name: string; roleLabel: string }[] = [];
+  const seenCandidateIds = new Set<string>();
+
+  // If viewer is NOT the applicant, add applicant
+  if (session.login_id !== app.applicant_login_id) {
+    seenCandidateIds.add(app.applicant_login_id);
+    mentionCandidates.push({
+      login_id: app.applicant_login_id,
+      name: app.applicant_snapshot?.name || actorNames[app.applicant_login_id] || "Applicant",
+      roleLabel: "Applicant Student",
+    });
+  }
+
+  // Add approvers from completed steps
+  for (const step of app.steps) {
+    if (
+      step.actor_login_id &&
+      step.actor_login_id !== session.login_id &&
+      !seenCandidateIds.has(step.actor_login_id)
+    ) {
+      seenCandidateIds.add(step.actor_login_id);
+      const stepConfig = app.chain_snapshot ? app.chain_snapshot[step.step_index] : null;
+      mentionCandidates.push({
+        login_id: step.actor_login_id,
+        name: actorNames[step.actor_login_id] || step.actor_login_id,
+        roleLabel: stepConfig?.label || ROLE_DISPLAY_NAMES[step.step_key] || "Reviewer",
+      });
+    }
+  }
+
+  // Add current active approver if not viewer
+  if (
+    app.current_approver_login_id &&
+    app.current_approver_login_id !== session.login_id &&
+    !seenCandidateIds.has(app.current_approver_login_id)
+  ) {
+    seenCandidateIds.add(app.current_approver_login_id);
+    const currStepConfig = app.chain_snapshot ? app.chain_snapshot[app.current_step] : null;
+    mentionCandidates.push({
+      login_id: app.current_approver_login_id,
+      name: app.current_approver?.name || actorNames[app.current_approver_login_id] || "Approver",
+      roleLabel: currStepConfig?.label || "Current Approver",
+    });
+  }
+
   const timeline = buildUnifiedTimeline(app.steps, messages || [], app.attachments);
   const canReply = app.status === "in_review" || app.status === "returned";
 
@@ -86,7 +161,7 @@ export default async function ApplicationStatusPage(props: {
                     ⚡ Urgent
                   </span>
                 )}
-                <h1 className="text-xl font-bold text-slate-900">{app.subject}</h1>
+                <h1 className="text-xl font-bold text-slate-900">{formatDatesInText(app.subject)}</h1>
               </div>
               <p className="text-xs text-slate-500">
                 Submitted on {formatToIST(app.created_at)} • Type: {typeLabels[app.type] || app.type}
@@ -95,13 +170,14 @@ export default async function ApplicationStatusPage(props: {
 
             <div className="shrink-0 flex items-center gap-3">
               {app.status === "in_review" && (
-                <div className="bg-amber-50 border border-amber-200 text-amber-900 px-3 py-1.5 rounded-md text-xs font-semibold">
-                  In Review (Step {app.current_step + 1} of {steps.length})
-                  {app.current_approver && (
-                    <span className="block text-[11px] font-normal text-amber-800 mt-0.5">
-                      Waiting for: {app.current_approver.name}
-                    </span>
-                  )}
+                <div className="bg-amber-50 border border-amber-200 text-amber-900 px-3.5 py-2 rounded-md text-xs shadow-xs">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    Pending with: {app.current_approver?.name || actorNames[app.current_approver_login_id || ""] || "Approver"}
+                  </div>
+                  <span className="block text-[11px] font-medium text-amber-700 mt-0.5">
+                    {app.chain_snapshot?.[app.current_step]?.label || "Next Reviewer"}
+                  </span>
                 </div>
               )}
               {app.status === "approved" && (
@@ -206,10 +282,17 @@ export default async function ApplicationStatusPage(props: {
           />
         )}
 
-        {/* Withdraw Action (Test A10) */}
+        {/* Withdraw Action: only allowed during Step 1 before it has been approved/forwarded */}
         {app.status === "in_review" && (
           <div className="mb-6">
-            <WithdrawOnlyAction applicationId={app.id} />
+            {app.current_step === 0 ? (
+              <WithdrawOnlyAction applicationId={app.id} />
+            ) : (
+              <div className="inline-flex items-center gap-1.5 text-xs text-slate-500 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-md">
+                <span>🔒</span>
+                <span>Cannot be withdrawn (Step 1 verification already completed)</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -241,6 +324,8 @@ export default async function ApplicationStatusPage(props: {
           timeline={timeline}
           canReply={canReply}
           signatureUrls={signatureUrls}
+          actorNames={actorNames}
+          mentionCandidates={mentionCandidates}
         />
       </main>
     </div>

@@ -10,7 +10,10 @@ export async function GET(request: NextRequest) {
   }
 
   const roleParam = (request.nextUrl.searchParams.get("role") || "").toLowerCase();
-  const idParam = request.nextUrl.searchParams.get("id") || "";
+  const idParam =
+    request.nextUrl.searchParams.get("id") ||
+    request.nextUrl.searchParams.get("login_id") ||
+    "";
   const nowSec = Math.floor(Date.now() / 1000);
 
   let sessionData: {
@@ -189,7 +192,13 @@ export async function GET(request: NextRequest) {
   }
 
   const token = await signSession(sessionData);
-  const targetUrl = redirectTarget || (sessionData.eklink_role === "student" ? "/" : "/inbox");
+  const nextParam =
+    request.nextUrl.searchParams.get("next") ||
+    request.nextUrl.searchParams.get("redirect");
+  const targetUrl =
+    nextParam ||
+    redirectTarget ||
+    (sessionData.eklink_role === "student" ? "/" : "/inbox");
 
   const env = getEnv();
   const response = NextResponse.redirect(new URL(targetUrl, env.APP_URL));

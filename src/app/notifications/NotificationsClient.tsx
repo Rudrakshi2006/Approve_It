@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatToIST } from "@/lib/date";
+import { formatToIST, formatDatesInText } from "@/lib/date";
 
 export interface NotificationItem {
   id: number;
@@ -124,7 +124,7 @@ export function NotificationsClient({
                         <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0"></span>
                       )}
                       <span className="text-xs font-bold text-slate-900 leading-snug">
-                        {n.message}
+                        {formatDatesInText(n.message)}
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-500">

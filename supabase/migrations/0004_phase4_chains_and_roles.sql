@@ -36,7 +36,7 @@ insert into application_types (key, name, enabled, chain) values
       "resolver": { "kind": "app_role", "app_role": "admin_staff" },
       "can_reject": false,
       "can_return": false,
-      "comment_required_on_forward": true,
+      "comment_required_on_forward": false,
       "attendance_required": true,
       "decision_label": "Forward"
     },

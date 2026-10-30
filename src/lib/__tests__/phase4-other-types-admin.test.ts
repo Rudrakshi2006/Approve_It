@@ -223,7 +223,7 @@ describe("Phase 4: Multi-Workflow Chains & Dynamic Resolvers", () => {
       }
     });
 
-    it("Forwarding without attendance comment fails with 422 COMMENT_REQUIRED_ON_FORWARD", () => {
+    it("Forwarding without attendance comment succeeds when attendance percentage is provided (comment is optional)", () => {
       const result = calculateTransition(
         appAtAdminStep,
         hackathonChain,
@@ -232,10 +232,10 @@ describe("Phase 4: Multi-Workflow Chains & Dynamic Resolvers", () => {
         "",
         { attendance_percentage: 85.5 }
       );
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.httpStatus).toBe(422);
-        expect(result.code).toBe("COMMENT_REQUIRED_ON_FORWARD");
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.decision).toBe("forwarded");
+        expect(result.comment).toContain("85.50%");
       }
     });
 

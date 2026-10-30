@@ -163,15 +163,6 @@ export function calculateTransition(
 
   // 6. Action: FORWARD (e.g. Admin Staff attendance step)
   if (action === "forward" || (action === "approve" && currentStep.decision_label === "Forward")) {
-    if (currentStep.comment_required_on_forward && !cleanComment) {
-      return {
-        ok: false,
-        code: "COMMENT_REQUIRED_ON_FORWARD",
-        message: "An attendance comment is mandatory before forwarding",
-        httpStatus: 422,
-      };
-    }
-
     let attendanceVal: number | null = null;
     if (currentStep.attendance_required) {
       const att = extra?.attendance_percentage;
@@ -205,7 +196,7 @@ export function calculateTransition(
         needs_approver_resolution: false,
         decision: "forwarded",
         comment: attendanceVal !== null
-          ? `Attendance: ${attendanceVal.toFixed(2)}% | ${cleanComment || "Attendance verified"}`
+          ? (cleanComment ? `Attendance: ${attendanceVal.toFixed(2)}% | ${cleanComment}` : `Attendance: ${attendanceVal.toFixed(2)}% (ERP verified)`)
           : cleanComment,
         attendance_percentage: attendanceVal,
       };
@@ -222,7 +213,7 @@ export function calculateTransition(
       needs_approver_resolution: true,
       decision: "forwarded",
       comment: attendanceVal !== null
-        ? `Attendance: ${attendanceVal.toFixed(2)}% | ${cleanComment || "Attendance verified"}`
+        ? (cleanComment ? `Attendance: ${attendanceVal.toFixed(2)}% | ${cleanComment}` : `Attendance: ${attendanceVal.toFixed(2)}% (ERP verified)`)
         : cleanComment,
       attendance_percentage: attendanceVal,
     };

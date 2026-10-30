@@ -7,6 +7,7 @@ import {
 } from "@/lib/workflow/resolve-approver";
 import { calculateSuggestedSemester } from "@/lib/semester";
 import { createNotification } from "@/lib/notifications";
+import { getTodayIST } from "@/lib/date";
 import type { ApplicantSnapshot } from "@/lib/repos/types";
 import type { Session } from "@/lib/session";
 
@@ -48,6 +49,69 @@ export async function submitApplication(
       error: `Applications for '${typeData.name}' are currently paused by administration`,
       status: 403,
     };
+  }
+
+  // Date constraints per requirements
+  const today = getTodayIST();
+
+  if (input.type === "hackathon") {
+    const fromDate = String(input.payload?.from_date || "");
+    const toDate = String(input.payload?.to_date || "");
+    if (fromDate && fromDate <= today) {
+      return {
+        ok: false,
+        error: "Hackathon dates must be strictly in the future (current or past dates are not permitted)",
+        status: 422,
+      };
+    }
+    if (fromDate && toDate && toDate < fromDate) {
+      return {
+        ok: false,
+        error: "Hackathon end date cannot be earlier than start date",
+        status: 422,
+      };
+    }
+  }
+
+  if (input.type === "re_ca") {
+    const caDate = String(input.payload?.ca_date || "");
+    if (caDate && caDate >= today) {
+      return {
+        ok: false,
+        error: "Re-CA applies only for tests missed in the past (current and future dates are not permitted)",
+        status: 422,
+      };
+    }
+  }
+
+  if (input.type === "medical") {
+    const fromDate = String(input.payload?.from_date || "").trim();
+    const toDate = String(input.payload?.to_date || "").trim();
+
+    if (!fromDate || !toDate) {
+      return {
+        ok: false,
+        error: "Both Leave From Date and To Date are compulsory for medical leave",
+        status: 422,
+      };
+    }
+
+    const today = getTodayIST();
+    if (fromDate >= today || toDate >= today) {
+      return {
+        ok: false,
+        error: "Medical leave applies only for past illness (current date and future dates are not permitted)",
+        status: 422,
+      };
+    }
+
+    if (toDate < fromDate) {
+      return {
+        ok: false,
+        error: "Medical leave end date cannot be earlier than start date",
+        status: 422,
+      };
+    }
   }
 
   const chain = parseChain(typeData.chain);

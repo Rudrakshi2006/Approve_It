@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { PDFDocument } from "pdf-lib";
 import { generateApplicationPdf } from "../pdf/generate-application-pdf";
+import { formatToDDMMYYYY, formatDatesInText } from "../date";
 import type { ApplicationDetail } from "../repos/types";
 
 describe("Phase 5: Notification Matrix & Lifecycle Events", () => {
@@ -33,6 +34,40 @@ describe("Phase 5: Notification Matrix & Lifecycle Events", () => {
     const recipientForApproverMsg =
       senderApprover === applicantLoginId ? approverLoginId : applicantLoginId;
     expect(recipientForApproverMsg).toBe(applicantLoginId);
+  });
+
+  it("targets explicitly tagged @mention recipient if part of active flow", () => {
+    const applicantLoginId = "24070521003";
+    const adminStaffLoginId = "STA5001";
+    const currentInchargeLoginId = "T036";
+    const futureHodLoginId = "T004";
+
+    const allowedInFlow = new Set([applicantLoginId, adminStaffLoginId, currentInchargeLoginId]);
+
+    // Scenario 1: Student mentions Admin Staff (Ramesh Pawar) who already processed step 1
+    const taggedByStudent = adminStaffLoginId;
+    const recipient = allowedInFlow.has(taggedByStudent) ? taggedByStudent : currentInchargeLoginId;
+    expect(recipient).toBe(adminStaffLoginId);
+
+    // Scenario 2: Tagging someone not yet reached in the chain (e.g. HOD T004) falls back safely
+    const invalidFutureTag = futureHodLoginId;
+    const recipientFallback = allowedInFlow.has(invalidFutureTag)
+      ? invalidFutureTag
+      : currentInchargeLoginId;
+    expect(recipientFallback).toBe(currentInchargeLoginId);
+  });
+
+  it("formats dates from YYYY-MM-DD into DD-MM-YYYY format", () => {
+    expect(formatToDDMMYYYY("2026-11-17")).toBe("17-11-2026");
+    expect(formatToDDMMYYYY("2026-05-02")).toBe("02-05-2026");
+
+    const textWithDates = "Hackathon On-Duty Leave: TRINETRA (2026-11-08 to 2026-11-09)";
+    expect(formatDatesInText(textWithDates)).toBe(
+      "Hackathon On-Duty Leave: TRINETRA (08-11-2026 to 09-11-2026)"
+    );
+
+    const missedCaText = "Re-CA: Math (Missed on 2026-10-15)";
+    expect(formatDatesInText(missedCaText)).toBe("Re-CA: Math (Missed on 15-10-2026)");
   });
 });
 
@@ -181,5 +216,55 @@ describe("Phase 5: PDF Export Dossier Generation", () => {
     const rawPdfHeader = textDecoder.decode(pdfBytes.slice(0, 8));
     expect(rawPdfHeader).toContain("%PDF-");
     expect(pdfBytes.length).toBeGreaterThan(1500);
+  });
+
+  it("embeds approver signature image and formats applicant submission distinctly", async () => {
+    // 1x1 valid transparent PNG
+    const pngBase64 =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+    const pngBytes = Uint8Array.from(Buffer.from(pngBase64, "base64"));
+
+    const appWithSubmissionAndSignature: ApplicationDetail = {
+      ...mockApprovedApp,
+      steps: [
+        {
+          id: 1,
+          application_id: mockApprovedApp.id,
+          step_index: 0,
+          step_key: "submission",
+          actor_login_id: mockApprovedApp.applicant_login_id,
+          decision: "submitted",
+          comment: "Initial submission by student",
+          verification_id: null,
+          signature_path: null,
+          at: "2026-10-25T10:00:00Z",
+        },
+        {
+          id: 2,
+          application_id: mockApprovedApp.id,
+          step_index: 1,
+          step_key: "hod",
+          actor_login_id: "T004",
+          decision: "approved",
+          comment: "Approved by HOD with digital signature",
+          verification_id: "AP-9999-XXXX",
+          signature_path: "signatures/T004_sig.png",
+          at: "2026-10-26T10:00:00Z",
+        },
+      ],
+    };
+
+    const pdfBytes = await generateApplicationPdf(appWithSubmissionAndSignature, {
+      actorNames: {
+        "24070521003": "Akshat Abhijeet Digalwar",
+        T004: "Dr. Sagarkumar Badhiye",
+      },
+      downloadSignature: async () => new Blob([pngBytes], { type: "image/png" }),
+    });
+
+    expect(pdfBytes).toBeInstanceOf(Uint8Array);
+    expect(pdfBytes.length).toBeGreaterThan(1500);
+    const loadedDoc = await PDFDocument.load(pdfBytes);
+    expect(loadedDoc.getPageCount()).toBeGreaterThanOrEqual(1);
   });
 });

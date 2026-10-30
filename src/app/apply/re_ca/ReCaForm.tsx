@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Session } from "@/lib/session";
+import { formatToDDMMYYYY } from "@/lib/date";
 
 interface FacultyOption {
   login_id: string;
@@ -11,12 +12,10 @@ interface FacultyOption {
   department: string;
 }
 
-interface UploadedFile {
-  storage_path: string;
-  original_name: string;
-  size_bytes: number;
-  mime: string;
-}
+import {
+  FileUploadDropzone,
+  type UploadedAttachment,
+} from "@/components/FileUploadDropzone";
 
 export function ReCaForm({
   session,
@@ -35,69 +34,9 @@ export function ReCaForm({
   const [reasonCategory, setReasonCategory] = useState("Medical Emergency");
   const [comment, setComment] = useState("");
   const [urgent, setUrgent] = useState(false);
-  const [attachments, setAttachments] = useState<UploadedFile[]>([]);
-  const [uploading, setUploading] = useState(false);
+  const [attachments, setAttachments] = useState<UploadedAttachment[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-    setError(null);
-
-    const files = Array.from(e.target.files);
-    if (attachments.length + files.length > 10) {
-      setError("Maximum 10 files allowed in total");
-      return;
-    }
-
-    setUploading(true);
-
-    for (const file of files) {
-      if (file.size > 5 * 1024 * 1024) {
-        setError(`File ${file.name} exceeds 5 MB limit`);
-        setUploading(false);
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append("file", file);
-
-      try {
-        const res = await fetch("/api/attachments/upload", {
-          method: "POST",
-          body: formData,
-        });
-
-        const data = await res.json();
-        if (!res.ok) {
-          setError(data.error || `Upload failed for ${file.name}`);
-          setUploading(false);
-          return;
-        }
-
-        setAttachments((prev) => [
-          ...prev,
-          {
-            storage_path: data.storage_path,
-            original_name: data.original_name,
-            size_bytes: data.size_bytes,
-            mime: data.mime,
-          },
-        ]);
-      } catch {
-        setError(`Failed to upload ${file.name}`);
-        setUploading(false);
-        return;
-      }
-    }
-
-    setUploading(false);
-    e.target.value = "";
-  };
-
-  const removeAttachment = (index: number) => {
-    setAttachments((prev) => prev.filter((_, i) => i !== index));
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,9 +57,16 @@ export function ReCaForm({
       return;
     }
 
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (caDate >= todayStr) {
+      setError("Re-CA applies only for exams/tests missed in the past (current and future dates are not permitted)");
+      return;
+    }
+
     setSubmitting(true);
 
-    const subject = `Re-Continuous Assessment (${caType}): ${courseName.trim()} (Missed on ${caDate})`;
+    const caDateFormatted = formatToDDMMYYYY(caDate);
+    const subject = `Re-Continuous Assessment (${caType}): ${courseName.trim()} (Missed on ${caDateFormatted})`;
     const payload = {
       course_name: courseName.trim(),
       ca_type: caType,
@@ -159,6 +105,10 @@ export function ReCaForm({
       setSubmitting(false);
     }
   };
+
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const maxPastDate = yesterday.toISOString().slice(0, 10);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -259,6 +209,7 @@ export function ReCaForm({
           <input
             type="date"
             required
+            max={maxPastDate}
             value={caDate}
             onChange={(e) => setCaDate(e.target.value)}
             className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
@@ -324,60 +275,17 @@ export function ReCaForm({
         <p className="text-xs text-slate-500 mb-3">
           Upload medical certificate, duty leave letter, or supporting proof. Max 10 files (PDF, JPG, PNG up to 5 MB each).
         </p>
-
-        <input
-          type="file"
-          multiple
-          accept=".pdf,.jpg,.jpeg,.png,image/png,image/jpeg,application/pdf"
-          disabled={uploading || attachments.length >= 10}
-          onChange={handleFileUpload}
-          className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-900 file:text-white hover:file:bg-slate-800 cursor-pointer disabled:opacity-50"
+        <FileUploadDropzone
+          attachments={attachments}
+          onAttachmentsChange={setAttachments}
         />
-
-        {uploading && (
-          <p className="text-xs text-indigo-600 font-medium mt-2">
-            Uploading and verifying attachments...
-          </p>
-        )}
-
-        {attachments.length > 0 && (
-          <div className="mt-4 space-y-2">
-            <span className="text-xs font-semibold text-slate-700 block">
-              Attached Files ({attachments.length} of 10):
-            </span>
-            <ul className="divide-y divide-slate-100 border border-slate-200 rounded-md bg-slate-50">
-              {attachments.map((file, idx) => (
-                <li
-                  key={file.storage_path}
-                  className="px-3 py-2 flex items-center justify-between text-xs"
-                >
-                  <span className="truncate max-w-xs font-medium text-slate-800">
-                    📄 {file.original_name}
-                  </span>
-                  <div className="flex items-center gap-3">
-                    <span className="text-slate-400">
-                      {(file.size_bytes / 1024).toFixed(1)} KB
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removeAttachment(idx)}
-                      className="text-rose-600 hover:text-rose-800 font-bold"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
       </div>
 
       {/* Submit Action */}
       <div className="pt-2">
         <button
           type="submit"
-          disabled={submitting || uploading}
+          disabled={submitting}
           className="w-full bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold py-3 px-4 rounded-md text-sm transition shadow-sm"
         >
           {submitting ? "Submitting Application..." : "Submit Re-CA Application"}
