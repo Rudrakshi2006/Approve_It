@@ -14,20 +14,21 @@ Today a student prints a form, fills it, gets the class teacher's signature, the
 
 ## 2. Scope
 
-**In scope (v1):** four application types (Medical, Hackathon, Re-CA, General), configurable approval chains, comments and hold/return, Gmail-style thread, attachments, digital-verification stamp, optional signature, in-app notifications, withdraw, live status, faculty dashboards, final PDF export (phase 5).
+**In scope (v1):** four student application types (Medical, Hackathon, Re-CA, General), employee application categories (General and Leave with monthly accrual balance ledger for Faculty, Staff, and HOD), configurable approval chains, comments and hold/return, Gmail-style thread with @mentions, attachments, digital-verification stamp, optional signature checkbox, in-app notifications, withdraw, live status, multi-section approver dashboards, final PDF export dossier (with balance snapshot).
 
-**Out of scope:** own login/signup, email or SMS notifications, faculty-leave/delegation handling, legal digital signatures, automatic attendance from Attendie (needs app-to-app contract), real student data, preview-deployment sign-in.
+**Out of scope:** own login/signup, email or SMS notifications, approver absence and delegation handling, legal digital signatures, automatic attendance from Attendie (needs app-to-app contract), real student data, preview-deployment sign-in.
 
 ## 3. People and roles
 
-| Who | EkLink role | ApproveIt designation |
+| Who | EkLink role | ApproveIt designation / capability |
 |---|---|---|
-| Student | `student` | none |
-| Class teacher | `faculty` | chosen by the student from a dropdown of all faculty |
+| Student | `student` | Applicant for student workflows |
+| Faculty | `faculty` | Approver for student apps, Class Teacher; Applicant for employee general & leave |
+| Staff | `staff` | Admin staff / Exam cell; Applicant for employee general & leave |
+| HOD (currently HOD CSE) | `hod` | Approver for department apps; Applicant for HOD general & leave (Director chain) |
+| Director | `director` | Final approver for institute-level & employee apps; never applies |
 | Admin (hackathon attendance) | `staff` | `app_roles.admin_staff` |
 | Hack-o-week incharge | `faculty` | `approver_assignments` (step `hackathon_incharge`) |
-| HOD (currently HOD CSE) | `hod` | resolved by role + same department; the HOD signs every time personally |
-| Director | `director` | resolved by role |
 | Exam Dept | `staff` | `app_roles.exam_cell` |
 | Workflow admin | `admin` / `staff` | `app_roles.workflow_admin` |
 
@@ -37,10 +38,14 @@ Allowed EkLink roles for the app: `student, faculty, staff, hod, director, admin
 
 | Type | Chain | Notes |
 |---|---|---|
-| **Medical attendance consideration** | Student → Class teacher → HOD | Student picks class teacher from dropdown. |
-| **Hackathon approval** | Student → Admin → Hack-o-week incharge → HOD → Director | Admin step is **forward-only**: adds attendance comment, cannot reject. |
-| **Re-CA application** | Student → Class teacher → HOD → Exam Dept | |
-| **General application** | Student → Class teacher → HOD (default, see open questions) | Configurable. |
+| **Medical attendance consideration** | Student → Class teacher → HOD | Student picks class teacher from dropdown. Past dates only. |
+| **Hackathon approval** | Student → Admin → Hack-o-week incharge → HOD → Director | Admin step is **forward-only**: adds attendance comment, cannot reject. Future dates only. |
+| **Re-CA application** | Student → Class teacher → HOD → Exam Dept | Past test dates only. |
+| **General application (Student)** | Student → Class teacher → HOD | Configurable. |
+| **Employee General** | Faculty / Staff → HOD → Director | Past/today dates only, optional 24-hr time. |
+| **Employee Leave** | Faculty / Staff → HOD (forward-only) → Director | Medical or Personal. Balance deduction atomic on Director approval. |
+| **HOD General** | HOD → Director | Direct Director review. |
+| **HOD Leave** | HOD → Director | Direct Director review. Balance deduction atomic on Director approval. |
 
 All details (hackathon info, medical proof, Re-CA reason) go in the **attachments**; the form itself is small: type, subject, class teacher (where needed), up to 10 attachments, optional comment, optional "urgent".
 
@@ -193,6 +198,37 @@ create table notifications (
   read_at timestamptz,
   created_at timestamptz not null default now()
 );
+
+-- Phase 7: Employee Leave Ledger, Saturday Groups, Holidays & App Settings
+alter table people add column saturday_group text check (saturday_group in ('odd', 'even'));
+
+create table holidays (
+  date date primary key,
+  name text not null,
+  created_at timestamptz not null default now()
+);
+
+create table app_settings (
+  key text primary key,
+  value jsonb not null,
+  updated_at timestamptz not null default now()
+);
+
+create table leave_ledger (
+  id bigint generated always as identity primary key,
+  login_id text not null references people(login_id),
+  leave_type text not null check (leave_type in ('medical', 'personal')),
+  kind text not null check (kind in ('opening', 'accrual', 'deduction', 'adjustment')),
+  period text,
+  days numeric(4,1) not null,
+  unpaid_days numeric(4,1) not null default 0,
+  balance_before numeric(4,1) not null,
+  balance_after numeric(4,1) not null,
+  application_id uuid references applications(id),
+  note text,
+  created_by text not null,
+  created_at timestamptz not null default now()
+);
 ```
 
 ### Chain config (`application_types.chain`)
@@ -217,9 +253,11 @@ Hackathon example: `admin_staff` (`app_role`, `can_reject:false`, attendance com
 
 **Student:** `/` dashboard (tabs: Medical, Hackathon, Re-CA, General) · `/apply/[type]` form · `/applications/[id]` live status + thread + attachments (edit/resubmit when returned, withdraw) · `/notifications` · `/profile` (details, semester, optional signature).
 
-**Approver (faculty/staff/hod/director):** `/inbox` with sidebar tabs Dashboard, Pending, Approved, Rejected, On hold · `/inbox/[id]` review screen (student details, attachments, thread, actions) · `/notifications` · `/profile`.
+**Employee (Faculty, Staff, HOD):** `/` dashboard ("My Applications" with General and Leave blocks, balance card, live working days preview & unpaid warning) · `/apply/employee_general` · `/apply/employee_leave` · `/apply/hod_general` · `/apply/hod_leave`.
 
-**Workflow admin:** `/admin/assignments`, `/admin/people` (CSV import), `/admin/types` (view/edit chains).
+**Approver (faculty/staff/hod/director):** `/inbox` with 3 sections: Student Applications, General (Faculty/Staff), Leave (Faculty/Staff); sidebar tabs Pending, Approved, Rejected, On hold · `/inbox/[id]` review screen (student/employee details, balance card & unpaid warning for leaves, attachments, thread with @mentions, action panel with signature checkbox) · `/notifications` · `/profile`.
+
+**Workflow admin:** `/admin/assignments`, `/admin/people` (CSV import), `/admin/types` (view/edit chains), `/admin/leave-balances`, `/admin/holidays` (CSV import), `/admin/settings`.
 
 ## 12. Folder structure
 
@@ -228,10 +266,11 @@ src/
   app/
     auth/{login,callback,refresh,logout,error}/
     (student)/ …   (approver)/inbox/ …   admin/ …
-    api/applications/…  api/notifications/…  api/attachments/…
+    api/applications/…  api/notifications/…  api/attachments/… api/leave/…
   lib/
-    eklink.ts  session.ts  people.ts  db.ts  validate.ts
+    eklink.ts  session.ts  people.ts  db.ts  validate.ts dates.ts
     workflow/   resolve-approver.ts  transitions.ts  chains.ts
+    leave/      working-days.ts balance.ts deduct.ts overlap.ts
     stamp/      verification-id.ts  render-stamp.ts
     storage.ts  notifications.ts
   proxy.ts
@@ -249,6 +288,7 @@ supabase/ migrations/*.sql   seed/*.sql
 | **3. Thread, hold, withdraw, signature** | Gmail-style thread, resubmit into same application, withdraw, optional signature in profile. |
 | **4. Other types** | Hackathon chain (forward-only admin), Re-CA, General, assignments admin screen. |
 | **5. Notifications & PDF** | Notification tab, unread badge, final PDF export (cover + timeline + stamps + merged attachments), optional `/verify/<id>`. |
+| **7. Employee apps & Leave ledger** | General & Leave for Faculty/Staff/HOD, lazy monthly accrual, Saturday groups & holidays, Director atomic deduction, 3-section inbox, PDF balance snapshot. |
 | **6. Hardening & go-live** | Full permission tests, README, EkLink checklist, `live` switch, URL and roles confirmed with EkLink admin. |
 
 ## 14. Open questions

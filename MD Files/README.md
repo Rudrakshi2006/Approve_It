@@ -17,7 +17,10 @@ Students submit applications online (medical attendance consideration, hackathon
 
 ## Features
 
-- Four application types with **configurable approval chains**
+- Student and Employee (Faculty, Staff, HOD) application types with **configurable approval chains**
+- Append-only leave ledger with monthly accrual (+1 Medical, +1 Personal, cap 12)
+- Saturday working groups (`odd`/`even`) and holiday exclusion engine
+- Atomic balance deduction on Director final approval
 - Class teacher chosen from a dropdown (all faculty from the database)
 - Up to 10 attachments (PDF/JPG/PNG, 5 MB each) in a private bucket
 - Approve / Reject / Hold-and-return with comments at every step
@@ -34,10 +37,14 @@ Students submit applications online (medical attendance consideration, hackathon
 
 | Type | Chain |
 |---|---|
-| Medical | Student → Class teacher → HOD |
-| Hackathon | Student → Admin (forward-only) → Hack-o-week incharge → HOD → Director |
-| Re-CA | Student → Class teacher → HOD → Exam Dept |
-| General | Student → Class teacher → HOD (default, configurable) |
+| Medical (Student) | Student → Class teacher → HOD |
+| Hackathon (Student) | Student → Admin (forward-only) → Hackathon incharge → HOD → Director |
+| Re-CA (Student) | Student → Class teacher → HOD → Exam Dept |
+| General (Student) | Student → Class teacher → HOD |
+| Employee General | Faculty / Staff → HOD → Director |
+| Employee Leave | Faculty / Staff → HOD (forward-only) → Director |
+| HOD General | HOD → Director |
+| HOD Leave | HOD → Director |
 
 ## Tech stack
 

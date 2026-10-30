@@ -39,7 +39,12 @@
 
 - **Current-approver check:** on every approve / reject / forward / return, the signed-in `login_id` must equal `applications.current_approver_login_id`, and the application must be `in_review`. Never accept `step`, `approver` or `login_id` from the browser.
 - **Visibility:** an applicant sees only their own applications. An approver sees only applications currently or previously assigned to them. Admin screens check `app_roles` in the database.
-- **Who may create applications:** `student`. Other roles only if a type explicitly allows it.
+- **Who may create applications:**
+  - `student` for student types (`medical`, `hackathon`, `re_ca`, `general`).
+  - `faculty` and `staff` for employee types (`employee_general`, `employee_leave`).
+  - `hod` for HOD types (`hod_general`, `hod_leave`).
+  - `director` can never create applications.
+  - *Clarification:* Earlier notes listing "no faculty-leave features" meant *approver absence and delegation handling*; employee leave applications with a balance ledger are fully supported as of Phase 7.
 - **Resolving approvers** happens on the server from ApproveIt's own data and the verified session, never from client input:
   - `class_teacher` → `applications.class_teacher_login_id` (chosen by the student; must exist in `people` with role `faculty`)
   - `hod` → person with EkLink role `hod` and the **same department** as the applicant

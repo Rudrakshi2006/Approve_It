@@ -2,9 +2,9 @@
 
 **How to use:** tick tasks as they are finished (`- [x]`), add a changelog line, and record EkLink test results in §3. Antigravity must update this file after every task (see `rules.md` §0).
 
-**Current phase:** 4, Other application types (Hackathon, Re-CA, General) & Admin
-**Overall status:** Phase 3 merged to main (tagged `phase-3-done`). Ready for Phase 4.
-**Last updated:** 2026-10-29
+**Current phase:** 7, Employee applications (General & Leave with Balance)
+**Overall status:** Phase 4 & Phase 5 merged to main. Working on Phase 7.
+**Last updated:** 2026-10-30
 
 ---
 
@@ -61,15 +61,36 @@
 - [x] Approver review toggle checkbox to attach/omit profile signature image
 
 ### Phase 4, Other types
-- [ ] Seed `hackathon`, `re_ca`, `general` chains
-- [ ] Hackathon form: event name, dates, city/college, team size, role, proof
-- [ ] Re-CA form: subject, faculty, original CA date, reason, proof
-- [ ] General form: freeform reason, recipient picker
-- [ ] All 4 forms active on student dashboard
-- [ ] Role-based approvers (Exam Cell, Director) tested
-- [ ] Admin / HOD view: reassign approver, view department status
+- [x] Seed `hackathon`, `re_ca`, `general` chains
+- [x] Hackathon form: event name, dates, city/college, team size, role, proof
+- [x] Re-CA form: subject, faculty, original CA date, reason, proof
+- [x] General form: freeform reason, recipient picker
+- [x] All 4 forms active on student dashboard
+- [x] Role-based approvers (Exam Cell, Director) tested
+- [x] Admin / HOD view: reassign approver, view department status
+- [x] Strict date validations (Hackathon future-only, Re-CA past-only, Medical past-only)
+- [x] Ramesh Pawar Admin Staff dedicated portal tabs (`Pending Verification`, `Forwarded / Done`)
 
-### Phase 5, Live EkLink verification & polish
+### Phase 5, Notifications & PDF Export Dossier
+- [x] In-app notification bell with real-time unread count and priority sorting
+- [x] Official multi-page PDF export dossier with embedded approver signature images & verification stamps
+- [x] Public verification portal (`/verify/[id]`) with tamper check
+- [x] Discussion thread in-flow @mentions with targeted notification dispatch
+
+### Phase 7, Employee applications & Leave ledger
+- [x] 7.0 Docs updates (`rules.md`, `planning.md`, `tracker.md`, `README.md`)
+- [ ] 7.1 `src/lib/dates.ts` strict `dd-mm-yyyy`, IST timezone & working days engine
+- [ ] 7.2 Database migration `0005_phase7_faculty_applications.sql` & seeds
+- [ ] 7.3 `src/lib/leave/` pure logic (`working-days.ts`, `balance.ts`, `deduct.ts`, `overlap.ts`)
+- [ ] 7.4 Workflow engine extension (Director atomic deduction, forward-only HOD leave, return routing)
+- [ ] 7.5 API endpoints (`POST /api/leave/preview`, employee submit, decision with signature checkbox)
+- [ ] 7.6 Apply-side UI ("My Applications" General and Leave blocks with live balance card & preview)
+- [ ] 7.7 Approver-side UI (3-section Approvals inbox, Leave review screen with balance & unpaid warning, forward-only panel)
+- [ ] 7.8 Admin screens (`/admin/leave-balances`, `/admin/holidays`, `/admin/settings`)
+- [ ] 7.9 Notifications & PDF export extension (balance snapshot, working days, excluded breakdown)
+- [ ] 7.10 Comprehensive Vitest test suite (dates, working days, accrual, deduction, chains, permissions)
+
+### Phase 6, Hardening & go-live
 - [ ] EkLink handshake in production (all 12 tests in §3 green)
 - [ ] Real CSV import in production (faculty, staff, students)
 - [ ] Responsive design check (mobile approver flow)
@@ -80,6 +101,8 @@
 
 ## 2. Changelog
 
+- **2026-10-30**: Phase 7 initiated on branch `phase-7-faculty-applications`. Updated docs, planning scope, and tracker.
+- **2026-10-30**: Phase 4 and Phase 5 merged to `main`. Completed all 4 student workflows, strict date validations, DD-MM-YYYY formatting, discussion thread @mentions, admin staff dedicated portal, and official multi-page PDF export dossier with embedded signatures. All 100 tests passing.
 - **2026-10-29**: Phase 3 merged to `main` (tag `phase-3-done`). Completed unified thread timeline, hold/return & resubmit flow, applicant withdrawal, profile semester snapshot confirmation, private signature image upload with drag-and-drop, red digital stamp for rejections, large green tick/red cross seal badges, and approver signature attachment toggle.
 - **2026-10-29**: Phase 2 merged to `main` (tag `phase-2-done`). Real SIT Nagpur faculty and student IDs pre-seeded in Supabase.
 - **2026-10-28**: Phase 1 merged to `main` (tag `phase-1-done`). Auth flow and security controls established.
