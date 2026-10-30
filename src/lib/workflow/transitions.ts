@@ -162,7 +162,13 @@ export function calculateTransition(
   }
 
   // 6. Action: FORWARD (e.g. Admin Staff attendance step)
-  if (action === "forward" || (action === "approve" && currentStep.decision_label === "Forward")) {
+  const isForwardAction =
+    action === "forward" ||
+    (action === "approve" &&
+      (currentStep.decision_label === "Forward" ||
+        currentStep.decision_label === "Verify and forward" ||
+        currentStep.can_reject === false));
+  if (isForwardAction) {
     let attendanceVal: number | null = null;
     if (currentStep.attendance_required) {
       const att = extra?.attendance_percentage;

@@ -14,6 +14,8 @@ import {
 } from "@/lib/workflow/resolve-approver";
 import { generateVerificationId } from "@/lib/stamp/verification-id";
 import { createNotification } from "@/lib/notifications";
+import { executeLeaveApprovalDeduction } from "@/lib/leave/service";
+import type { LeaveType } from "@/lib/leave/types";
 
 const DecisionSchema = z.object({
   action: z.enum(["approve", "reject", "return", "forward"]),
@@ -201,6 +203,28 @@ export async function POST(
         application_id: app.id,
         kind: "approved",
         message: `🎉 Your application "${app.subject}" has been fully approved!`,
+      });
+      if (app.type === "employee_leave" || app.type === "hod_leave") {
+        try {
+          const payload = app.payload as { leave_type?: LeaveType; working_days?: number };
+          const leaveType = (payload?.leave_type || "personal") as LeaveType;
+          const workingDays = Number(payload?.working_days || 0);
+
+          await executeLeaveApprovalDeduction({
+            applicationId: app.id,
+            loginId: app.applicant_login_id,
+            leaveType,
+            workingDays,
+            approvedBy: session.login_id,
+          });
+        } catch (err) {
+          console.error("Failed to execute leave deduction upon approval:", err);
+        }
+      }
+      return NextResponse.json({
+        ok: true,
+        status: transition.new_status,
+        verification_id: verificationId,
       });
     } else if (nextApproverLoginId) {
       await createNotification({
