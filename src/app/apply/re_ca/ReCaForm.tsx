@@ -30,6 +30,7 @@ export function ReCaForm({
   const [courseName, setCourseName] = useState("");
   const [facultyId, setFacultyId] = useState("");
   const [caDate, setCaDate] = useState("");
+  const [caToDate, setCaToDate] = useState("");
   const [caType, setCaType] = useState("CA 1");
   const [reasonCategory, setReasonCategory] = useState("Medical Emergency");
   const [comment, setComment] = useState("");
@@ -37,6 +38,10 @@ export function ReCaForm({
   const [attachments, setAttachments] = useState<UploadedAttachment[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const todayIST = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+  }).format(new Date());
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,9 +62,15 @@ export function ReCaForm({
       return;
     }
 
-    const todayStr = new Date().toISOString().slice(0, 10);
-    if (caDate >= todayStr) {
-      setError("Re-CA applies only for exams/tests missed in the past (current and future dates are not permitted)");
+    const effectiveCaToDate = caToDate.trim() || caDate.trim();
+
+    if (caDate > todayIST || effectiveCaToDate > todayIST) {
+      setError("Re-CA applies only for tests missed today or in the past (future dates are not permitted)");
+      return;
+    }
+
+    if (effectiveCaToDate < caDate) {
+      setError("Missed Exam To Date cannot be earlier than From Date");
       return;
     }
 
@@ -71,11 +82,14 @@ export function ReCaForm({
     setSubmitting(true);
 
     const caDateFormatted = formatToDDMMYYYY(caDate);
-    const subject = `Re-Continuous Assessment (${caType}): ${courseName.trim()} (Missed on ${caDateFormatted})`;
+    const caToDateFormatted = formatToDDMMYYYY(effectiveCaToDate);
+    const dateRangeStr = caDateFormatted === caToDateFormatted ? caDateFormatted : `${caDateFormatted} to ${caToDateFormatted}`;
+    const subject = `Re-Continuous Assessment (${caType}): ${courseName.trim()} (Missed on ${dateRangeStr})`;
     const payload = {
       course_name: courseName.trim(),
       ca_type: caType,
       ca_date: caDate,
+      ca_to_date: effectiveCaToDate,
       reason_category: reasonCategory,
       comment: comment.trim() || null,
     };
@@ -110,10 +124,6 @@ export function ReCaForm({
       setSubmitting(false);
     }
   };
-
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const maxPastDate = yesterday.toISOString().slice(0, 10);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -161,7 +171,7 @@ export function ReCaForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-semibold text-slate-900 mb-1">
-            Course / Subject Name <span className="text-rose-500">*</span>
+            Course / Subject Name <span className="text-red-600 font-bold ml-1">*</span>
           </label>
           <input
             type="text"
@@ -175,7 +185,7 @@ export function ReCaForm({
 
         <div>
           <label className="block text-sm font-semibold text-slate-900 mb-1">
-            Course Faculty <span className="text-rose-500">*</span>
+            Course Faculty <span className="text-red-600 font-bold ml-1">*</span>
           </label>
           <select
             required
@@ -194,7 +204,7 @@ export function ReCaForm({
 
         <div>
           <label className="block text-sm font-semibold text-slate-900 mb-1">
-            Assessment Type <span className="text-rose-500">*</span>
+            Assessment Type <span className="text-red-600 font-bold ml-1">*</span>
           </label>
           <select
             value={caType}
@@ -209,22 +219,47 @@ export function ReCaForm({
 
         <div>
           <label className="block text-sm font-semibold text-slate-900 mb-1">
-            Missed Exam Date <span className="text-rose-500">*</span>
+            Missed Exam From Date <span className="text-red-600 font-bold ml-1">*</span>
           </label>
           <input
             type="date"
             required
-            max={maxPastDate}
+            max={todayIST}
             value={caDate}
             onChange={(e) => setCaDate(e.target.value)}
-            className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
+            className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 cursor-pointer"
           />
+          <p className="text-[11px] text-slate-500 mt-1">
+            Past dates and today allowed (future dates not permitted)
+          </p>
+        </div>
+
+        <div className="sm:col-span-2">
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-sm font-semibold text-slate-900">
+              Missed Exam To Date
+            </label>
+            <span className="text-[11px] text-slate-400 font-normal">
+              (Optional — leave blank for 1 day)
+            </span>
+          </div>
+          <input
+            type="date"
+            min={caDate || undefined}
+            max={todayIST}
+            value={caToDate}
+            onChange={(e) => setCaToDate(e.target.value)}
+            className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 cursor-pointer"
+          />
+          <p className="text-[11px] text-slate-500 mt-1">
+            Past dates and today allowed (max: today)
+          </p>
         </div>
       </div>
 
       <div>
         <label className="block text-sm font-semibold text-slate-900 mb-1">
-          Reason Category <span className="text-rose-500">*</span>
+          Reason Category <span className="text-red-600 font-bold ml-1">*</span>
         </label>
         <select
           value={reasonCategory}
@@ -275,7 +310,7 @@ export function ReCaForm({
       {/* Attachments Section */}
       <div className="border border-slate-200 rounded-lg p-5 bg-white">
         <label className="block text-sm font-semibold text-slate-900 mb-1">
-          Supporting Documents &amp; Evidence * (Compulsory)
+          Supporting Documents &amp; Evidence <span className="text-red-600 font-bold ml-1">*</span> <span className="text-xs text-red-600 font-semibold">(Compulsory)</span>
         </label>
         <p className="text-xs text-slate-500 mb-3">
           Upload medical certificate, duty leave letter, or supporting proof. Max 10 files (PDF, JPG, PNG up to 5 MB each).

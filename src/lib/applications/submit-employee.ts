@@ -6,7 +6,7 @@ import {
   type ApproverResolutionContext,
 } from "@/lib/workflow/resolve-approver";
 import { createNotification } from "@/lib/notifications";
-import { parseDDMMYYYYtoISO } from "@/lib/dates";
+import { parseDDMMYYYYtoISO, getTodayIST } from "@/lib/dates";
 import { previewLeave } from "@/lib/leave/service";
 import type { ApplicantSnapshot } from "@/lib/repos/types";
 import type { Session } from "@/lib/session";
@@ -16,6 +16,8 @@ export interface SubmitEmployeeGeneralInput {
   category: string;
   subject: string;
   description: string;
+  from_date?: string | null;
+  to_date?: string | null;
   comment?: string | null;
   urgent?: boolean;
   attachments?: Array<{
@@ -29,7 +31,7 @@ export interface SubmitEmployeeGeneralInput {
 export interface SubmitEmployeeLeaveInput {
   leave_type: LeaveType;
   from_date: string;
-  to_date: string;
+  to_date?: string | null;
   reason: string;
   comment?: string | null;
   attachments?: Array<{
@@ -175,9 +177,11 @@ export async function submitEmployeeGeneral(
   }
 
   // 4. Create and submit
-  const payload = {
+  const payload: Record<string, unknown> = {
     category: input.category,
     description: input.description,
+    from_date: input.from_date || null,
+    to_date: input.to_date || input.from_date || null,
     comment: input.comment || input.description,
   };
 
@@ -234,6 +238,15 @@ export async function submitEmployeeLeave(
 
   if (!fromIso || !toIso) {
     return { ok: false, error: "Invalid date format. Expected DD-MM-YYYY or YYYY-MM-DD", status: 422 };
+  }
+
+  const todayIso = getTodayIST();
+  if (fromIso < todayIso) {
+    return {
+      ok: false,
+      error: "Past dates are not allowed for leave applications. Please select today or a future date.",
+      status: 422,
+    };
   }
 
   if (fromIso > toIso) {

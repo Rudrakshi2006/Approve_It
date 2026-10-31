@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireApiSession } from "@/lib/auth";
 import { SESSION_COOKIE } from "@/lib/session";
 import { previewLeave } from "@/lib/leave/service";
-import { parseDDMMYYYYtoISO } from "@/lib/dates";
+import { parseDDMMYYYYtoISO, getTodayIST } from "@/lib/dates";
 
 const PreviewSchema = z.object({
   from_date: z.string().min(1, "From date is required"),
@@ -50,6 +50,14 @@ export async function POST(request: NextRequest) {
 
   if (!fromIso || !toIso) {
     return NextResponse.json({ error: "Invalid date format. Expected DD-MM-YYYY or YYYY-MM-DD" }, { status: 422 });
+  }
+
+  const todayIso = getTodayIST();
+  if (fromIso < todayIso) {
+    return NextResponse.json(
+      { error: "Past dates are not allowed for leave applications. Please select today or a future date." },
+      { status: 422 }
+    );
   }
 
   if (fromIso > toIso) {

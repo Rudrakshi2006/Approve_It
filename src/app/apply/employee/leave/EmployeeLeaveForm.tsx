@@ -20,6 +20,10 @@ interface PreviewData {
 
 export function EmployeeLeaveForm() {
   const router = useRouter();
+  const todayIST = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+  }).format(new Date());
+
   const [leaveType, setLeaveType] = useState<"medical" | "personal">("personal");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -36,6 +40,12 @@ export function EmployeeLeaveForm() {
     if (!fromDate) {
       setPreview(null);
       setPreviewError(null);
+      return;
+    }
+
+    if (fromDate.trim() < todayIST) {
+      setPreview(null);
+      setPreviewError("Past dates are not allowed for leave applications. Please select today or a future date.");
       return;
     }
 
@@ -73,7 +83,7 @@ export function EmployeeLeaveForm() {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [fromDate, toDate, leaveType]);
+  }, [fromDate, toDate, leaveType, todayIST]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,6 +91,11 @@ export function EmployeeLeaveForm() {
 
     if (!fromDate.trim()) {
       setSubmitError("Please select Leave From Date");
+      return;
+    }
+
+    if (fromDate.trim() < todayIST) {
+      setSubmitError("Past dates are not allowed for leave applications. Please select today or a future date.");
       return;
     }
 
@@ -153,7 +168,7 @@ export function EmployeeLeaveForm() {
       {/* Leave Type Dropdown */}
       <div>
         <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-          Leave Type <span className="text-rose-600 font-bold">*</span>
+          Leave Type <span className="text-red-600 font-bold ml-1">*</span>
         </label>
         <select
           value={leaveType}
@@ -169,11 +184,12 @@ export function EmployeeLeaveForm() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-            Leave From Date <span className="text-rose-600 font-bold">*</span>
+            Leave From Date <span className="text-red-600 font-bold ml-1">*</span>
           </label>
           <input
             type="date"
             value={fromDate}
+            min={todayIST}
             onChange={(e) => setFromDate(e.target.value)}
             className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 cursor-pointer shadow-2xs"
             required
@@ -192,7 +208,7 @@ export function EmployeeLeaveForm() {
           <input
             type="date"
             value={toDate}
-            min={fromDate || undefined}
+            min={fromDate || todayIST}
             onChange={(e) => setToDate(e.target.value)}
             className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 cursor-pointer shadow-2xs"
           />
@@ -282,7 +298,7 @@ export function EmployeeLeaveForm() {
 
       <div>
         <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-          Reason for Leave <span className="text-rose-600 font-bold">*</span>
+          Reason for Leave <span className="text-red-600 font-bold ml-1">*</span>
         </label>
         <textarea
           rows={4}

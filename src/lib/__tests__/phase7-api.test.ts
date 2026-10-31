@@ -89,4 +89,18 @@ describe("Phase 7: Employee Applications & Leave API Validation (Task 7.5)", () 
       expect(res.error).toMatch(/Invalid date format/i);
     }
   });
+
+  it("rejects faculty leave submission if from_date is in the past", async () => {
+    const res = await submitEmployeeLeave(facultySession, {
+      leave_type: "personal",
+      from_date: "01-01-2020",
+      reason: "Past personal leave",
+    });
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.status).toBe(422);
+      expect(res.error).toMatch(/Past dates are not allowed/i);
+    }
+  });
 });

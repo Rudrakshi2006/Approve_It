@@ -11,6 +11,8 @@ export function EmployeeGeneralForm() {
   const router = useRouter();
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [subject, setSubject] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [description, setDescription] = useState("");
   const [comment, setComment] = useState("");
   const [urgent, setUrgent] = useState(false);
@@ -24,6 +26,17 @@ export function EmployeeGeneralForm() {
 
     if (!subject.trim()) {
       setError("Please enter a subject");
+      return;
+    }
+
+    if (!fromDate.trim()) {
+      setError("Please select From Date");
+      return;
+    }
+
+    const effectiveToDate = toDate.trim() || fromDate.trim();
+    if (effectiveToDate < fromDate.trim()) {
+      setError("To Date cannot be earlier than From Date");
       return;
     }
 
@@ -41,6 +54,8 @@ export function EmployeeGeneralForm() {
         body: JSON.stringify({
           category,
           subject: subject.trim(),
+          from_date: fromDate.trim(),
+          to_date: effectiveToDate,
           description: description.trim(),
           comment: comment.trim() || description.trim(),
           urgent,
@@ -78,7 +93,7 @@ export function EmployeeGeneralForm() {
 
       <div>
         <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-          Category <span className="text-rose-600 font-bold">*</span>
+          Category <span className="text-red-600 font-bold ml-1">*</span>
         </label>
         <select
           value={category}
@@ -95,7 +110,7 @@ export function EmployeeGeneralForm() {
 
       <div>
         <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-          Subject <span className="text-rose-600 font-bold">*</span>
+          Subject <span className="text-red-600 font-bold ml-1">*</span>
         </label>
         <input
           type="text"
@@ -107,9 +122,43 @@ export function EmployeeGeneralForm() {
         />
       </div>
 
+      {/* Date Pickers (All dates allowed) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+            From Date <span className="text-red-600 font-bold ml-1">*</span>
+          </label>
+          <input
+            type="date"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 cursor-pointer shadow-2xs"
+            required
+          />
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+              To Date
+            </label>
+            <span className="text-[11px] text-slate-400 font-normal">
+              (Optional — leave blank for 1 day)
+            </span>
+          </div>
+          <input
+            type="date"
+            value={toDate}
+            min={fromDate || undefined}
+            onChange={(e) => setToDate(e.target.value)}
+            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 cursor-pointer shadow-2xs"
+          />
+        </div>
+      </div>
+
       <div>
         <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-          Description &amp; Details <span className="text-rose-600 font-bold">*</span>
+          Description &amp; Details <span className="text-red-600 font-bold ml-1">*</span>
         </label>
         <textarea
           rows={5}

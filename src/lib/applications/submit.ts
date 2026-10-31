@@ -62,16 +62,25 @@ export async function submitApplication(
         status: 422,
       };
     }
-    const fromDate = String(input.payload?.from_date || "");
-    const toDate = String(input.payload?.to_date || "");
-    if (fromDate && fromDate <= today) {
+    const fromDate = String(input.payload?.from_date || "").trim();
+    const toDate = String(input.payload?.to_date || "").trim();
+    const effectiveToDate = toDate || fromDate;
+
+    if (!fromDate) {
       return {
         ok: false,
-        error: "Hackathon dates must be strictly in the future (current or past dates are not permitted)",
+        error: "Event Start Date is compulsory for hackathon applications",
         status: 422,
       };
     }
-    if (fromDate && toDate && toDate < fromDate) {
+    if (fromDate < today) {
+      return {
+        ok: false,
+        error: "Hackathon dates cannot be in the past (current and future dates are permitted)",
+        status: 422,
+      };
+    }
+    if (effectiveToDate < fromDate) {
       return {
         ok: false,
         error: "Hackathon end date cannot be earlier than start date",
@@ -88,11 +97,28 @@ export async function submitApplication(
         status: 422,
       };
     }
-    const caDate = String(input.payload?.ca_date || "");
-    if (caDate && caDate >= today) {
+    const caDate = String(input.payload?.ca_date || "").trim();
+    const caToDate = String(input.payload?.ca_to_date || "").trim();
+    const effectiveCaToDate = caToDate || caDate;
+
+    if (!caDate) {
       return {
         ok: false,
-        error: "Re-CA applies only for tests missed in the past (current and future dates are not permitted)",
+        error: "Missed Exam Date is compulsory for Re-CA applications",
+        status: 422,
+      };
+    }
+    if (caDate > today || effectiveCaToDate > today) {
+      return {
+        ok: false,
+        error: "Re-CA applies only for tests missed today or in the past (future dates are not permitted)",
+        status: 422,
+      };
+    }
+    if (effectiveCaToDate < caDate) {
+      return {
+        ok: false,
+        error: "Missed Exam To Date cannot be earlier than From Date",
         status: 422,
       };
     }
@@ -108,25 +134,25 @@ export async function submitApplication(
     }
     const fromDate = String(input.payload?.from_date || "").trim();
     const toDate = String(input.payload?.to_date || "").trim();
+    const effectiveToDate = toDate || fromDate;
 
-    if (!fromDate || !toDate) {
+    if (!fromDate) {
       return {
         ok: false,
-        error: "Both Leave From Date and To Date are compulsory for medical leave",
+        error: "Leave From Date is compulsory for medical leave",
         status: 422,
       };
     }
 
-    const today = getTodayIST();
-    if (fromDate >= today || toDate >= today) {
+    if (fromDate > today || effectiveToDate > today) {
       return {
         ok: false,
-        error: "Medical leave applies only for past illness (current date and future dates are not permitted)",
+        error: "Medical leave applies only for past illness and current date (future dates are not permitted)",
         status: 422,
       };
     }
 
-    if (toDate < fromDate) {
+    if (effectiveToDate < fromDate) {
       return {
         ok: false,
         error: "Medical leave end date cannot be earlier than start date",

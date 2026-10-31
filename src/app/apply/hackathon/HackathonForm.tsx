@@ -31,6 +31,10 @@ export function HackathonForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const todayIST = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+  }).format(new Date());
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -40,18 +44,19 @@ export function HackathonForm({
       return;
     }
 
-    if (!fromDate || !toDate) {
-      setError("Please select the Event Start and End dates");
+    if (!fromDate) {
+      setError("Please select the Event Start Date");
       return;
     }
 
-    const todayStr = new Date().toISOString().slice(0, 10);
-    if (fromDate <= todayStr) {
-      setError("Hackathon dates must be strictly in the future (current or past dates are not permitted)");
+    if (fromDate < todayIST) {
+      setError("Hackathon dates cannot be in the past (current and future dates are permitted)");
       return;
     }
 
-    if (toDate < fromDate) {
+    const effectiveToDate = toDate.trim() || fromDate.trim();
+
+    if (effectiveToDate < fromDate) {
       setError("Event End Date cannot be earlier than Start Date");
       return;
     }
@@ -64,12 +69,12 @@ export function HackathonForm({
     setSubmitting(true);
 
     const fromDateFormatted = formatToDDMMYYYY(fromDate);
-    const toDateFormatted = formatToDDMMYYYY(toDate);
+    const toDateFormatted = formatToDDMMYYYY(effectiveToDate);
     const subject = `Hackathon Leave: ${eventName.trim()} (${fromDateFormatted === toDateFormatted ? fromDateFormatted : `${fromDateFormatted} to ${toDateFormatted}`})`;
     const payload = {
       event_name: eventName.trim(),
       from_date: fromDate,
-      to_date: toDate,
+      to_date: effectiveToDate,
       location: location.trim(),
       team_size: parseInt(teamSize, 10) || 1,
       team_role: teamRole.trim(),
@@ -105,10 +110,6 @@ export function HackathonForm({
       setSubmitting(false);
     }
   };
-
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const minFutureDate = tomorrow.toISOString().slice(0, 10);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -156,7 +157,7 @@ export function HackathonForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="sm:col-span-2">
           <label className="block text-sm font-semibold text-slate-900 mb-1">
-            Hackathon / Event Name <span className="text-rose-500">*</span>
+            Hackathon / Event Name <span className="text-red-600 font-bold ml-1">*</span>
           </label>
           <input
             type="text"
@@ -170,30 +171,40 @@ export function HackathonForm({
 
         <div>
           <label className="block text-sm font-semibold text-slate-900 mb-1">
-            Event Start Date <span className="text-rose-500">*</span>
+            Event Start Date <span className="text-red-600 font-bold ml-1">*</span>
           </label>
           <input
             type="date"
             required
-            min={minFutureDate}
+            min={todayIST}
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
-            className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
+            className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 cursor-pointer"
           />
+          <p className="text-[11px] text-slate-500 mt-1">
+            Current date and future dates allowed
+          </p>
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-slate-900 mb-1">
-            Event End Date <span className="text-rose-500">*</span>
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-sm font-semibold text-slate-900">
+              Event End Date
+            </label>
+            <span className="text-[11px] text-slate-400 font-normal">
+              (Optional — leave blank for 1 day)
+            </span>
+          </div>
           <input
             type="date"
-            required
-            min={fromDate || minFutureDate}
+            min={fromDate || todayIST}
             value={toDate}
             onChange={(e) => setToDate(e.target.value)}
-            className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
+            className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 cursor-pointer"
           />
+          <p className="text-[11px] text-slate-500 mt-1">
+            Current date and future dates allowed
+          </p>
         </div>
 
         <div>
@@ -272,7 +283,7 @@ export function HackathonForm({
       {/* Attachments Section */}
       <div className="border border-slate-200 rounded-lg p-5 bg-white">
         <label className="block text-sm font-semibold text-slate-900 mb-1">
-          Hackathon Brochure / Acceptance Letter / Proof * (Compulsory)
+          Hackathon Brochure / Acceptance Letter / Proof <span className="text-red-600 font-bold ml-1">*</span> <span className="text-xs text-red-600 font-semibold">(Compulsory)</span>
         </label>
         <p className="text-xs text-slate-500 mb-3">
           Upload confirmation email, shortlist brochure, or invitation letter. Max 10 files (PDF, JPG, PNG up to 5 MB each).

@@ -27,6 +27,8 @@ export function GeneralForm({
 }) {
   const router = useRouter();
   const [subject, setSubject] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [classTeacher, setClassTeacher] = useState("");
   const [category, setCategory] = useState("Bonafide / Recommendation Request");
   const [comment, setComment] = useState("");
@@ -43,6 +45,17 @@ export function GeneralForm({
       return;
     }
 
+    if (!fromDate) {
+      setError("Please select From Date");
+      return;
+    }
+
+    const effectiveToDate = toDate.trim() || fromDate.trim();
+    if (effectiveToDate < fromDate) {
+      setError("To Date cannot be earlier than From Date");
+      return;
+    }
+
     if (!classTeacher) {
       setError("Please select the recipient Faculty Member / Mentor");
       return;
@@ -52,6 +65,8 @@ export function GeneralForm({
 
     const payload = {
       category,
+      from_date: fromDate,
+      to_date: effectiveToDate,
       comment: comment.trim() || null,
     };
 
@@ -148,7 +163,7 @@ export function GeneralForm({
       {/* Subject */}
       <div>
         <label className="block text-sm font-semibold text-slate-900 mb-1">
-          Subject / Title <span className="text-rose-500">*</span>
+          Subject / Title <span className="text-red-600 font-bold ml-1">*</span>
         </label>
         <input
           type="text"
@@ -160,10 +175,50 @@ export function GeneralForm({
         />
       </div>
 
+      {/* Date Range (All Dates Allowed) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-semibold text-slate-900 mb-1">
+            From Date <span className="text-red-600 font-bold ml-1">*</span>
+          </label>
+          <input
+            type="date"
+            required
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 cursor-pointer"
+          />
+          <p className="text-[11px] text-slate-500 mt-1">
+            All dates (past, current, and future) are permitted
+          </p>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-sm font-semibold text-slate-900">
+              To Date
+            </label>
+            <span className="text-[11px] text-slate-400 font-normal">
+              (Optional — leave blank for 1 day)
+            </span>
+          </div>
+          <input
+            type="date"
+            min={fromDate || undefined}
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 cursor-pointer"
+          />
+          <p className="text-[11px] text-slate-500 mt-1">
+            All dates permitted (leave blank for single day)
+          </p>
+        </div>
+      </div>
+
       {/* Faculty Recipient */}
       <div>
         <label className="block text-sm font-semibold text-slate-900 mb-1">
-          Select Faculty Recipient / Mentor <span className="text-rose-500">*</span>
+          Select Faculty Recipient / Mentor <span className="text-red-600 font-bold ml-1">*</span>
         </label>
         <select
           required
@@ -186,7 +241,7 @@ export function GeneralForm({
       {/* Detailed Description */}
       <div>
         <label className="block text-sm font-semibold text-slate-900 mb-1">
-          Detailed Application Letter / Reason <span className="text-rose-500">*</span>
+          Detailed Application Letter / Reason <span className="text-red-600 font-bold ml-1">*</span>
         </label>
         <textarea
           rows={4}

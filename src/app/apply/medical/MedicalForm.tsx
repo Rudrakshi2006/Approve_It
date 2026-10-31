@@ -35,14 +35,10 @@ export function MedicalForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Medical leave is strictly for past illness missed (no current/future dates allowed)
+  // Medical leave is for past dates and current date (future dates not allowed)
   const todayIST = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Kolkata",
   }).format(new Date());
-  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const maxPastDate = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata",
-  }).format(yesterday);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,19 +49,21 @@ export function MedicalForm({
       return;
     }
 
-    if (!fromDate || !toDate) {
-      setError("Both Leave From Date and To Date are compulsory");
+    if (!fromDate) {
+      setError("Leave From Date is compulsory");
       return;
     }
 
-    if (fromDate >= todayIST || toDate >= todayIST) {
+    const effectiveToDate = toDate.trim() || fromDate.trim();
+
+    if (fromDate > todayIST || effectiveToDate > todayIST) {
       setError(
-        "Medical leave applies strictly to past dates missed due to illness (today and future dates are not allowed)"
+        "Medical leave applies strictly to past dates and current date (future dates are not permitted)"
       );
       return;
     }
 
-    if (toDate < fromDate) {
+    if (effectiveToDate < fromDate) {
       setError("Leave To Date cannot be earlier than From Date");
       return;
     }
@@ -83,7 +81,7 @@ export function MedicalForm({
     setSubmitting(true);
 
     const fromDateFormatted = formatToDDMMYYYY(fromDate);
-    const toDateFormatted = formatToDDMMYYYY(toDate);
+    const toDateFormatted = formatToDDMMYYYY(effectiveToDate);
     const finalSubject = subject.includes(fromDateFormatted)
       ? subject.trim()
       : `${subject.trim()} (${fromDateFormatted === toDateFormatted ? fromDateFormatted : `${fromDateFormatted} to ${toDateFormatted}`})`;
@@ -99,7 +97,7 @@ export function MedicalForm({
           urgent: false,
           payload: {
             from_date: fromDate,
-            to_date: toDate,
+            to_date: effectiveToDate,
           },
           attachments,
         }),
@@ -166,7 +164,7 @@ export function MedicalForm({
       {/* Subject */}
       <div>
         <label className="block text-sm font-semibold text-slate-900 mb-1">
-          Subject / Medical Reason <span className="text-rose-500">*</span>
+          Subject / Medical Reason <span className="text-red-600 font-bold ml-1">*</span>
         </label>
         <input
           type="text"
@@ -178,39 +176,43 @@ export function MedicalForm({
         />
       </div>
 
-      {/* Leave Period Dates (Strictly Past Dates) */}
+      {/* Leave Period Dates (Past Dates + Current Date Allowed) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-semibold text-slate-900 mb-1">
-            Leave From Date <span className="text-rose-500">*</span>
+            Leave From Date <span className="text-red-600 font-bold ml-1">*</span>
           </label>
           <input
             type="date"
             required
-            max={maxPastDate}
+            max={todayIST}
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
-            className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
+            className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 cursor-pointer"
           />
           <p className="text-[11px] text-slate-500 mt-1">
-            Must be a past date missed due to illness (max: yesterday)
+            Past dates and today allowed (future dates not permitted)
           </p>
         </div>
         <div>
-          <label className="block text-sm font-semibold text-slate-900 mb-1">
-            Leave To Date <span className="text-rose-500">*</span>
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-sm font-semibold text-slate-900">
+              Leave To Date
+            </label>
+            <span className="text-[11px] text-slate-400 font-normal">
+              (Optional — leave blank for 1 day)
+            </span>
+          </div>
           <input
             type="date"
-            required
             min={fromDate || undefined}
-            max={maxPastDate}
+            max={todayIST}
             value={toDate}
             onChange={(e) => setToDate(e.target.value)}
-            className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
+            className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 cursor-pointer"
           />
           <p className="text-[11px] text-slate-500 mt-1">
-            Must be a past date (cannot be today or future)
+            Past dates and today allowed (max: today)
           </p>
         </div>
       </div>
@@ -218,7 +220,7 @@ export function MedicalForm({
       {/* Class Teacher Dropdown */}
       <div>
         <label className="block text-sm font-semibold text-slate-900 mb-1">
-          Select Class Teacher <span className="text-rose-500">*</span>
+          Select Class Teacher <span className="text-red-600 font-bold ml-1">*</span>
         </label>
         <select
           required
@@ -255,7 +257,7 @@ export function MedicalForm({
       {/* Attachments Section */}
       <div className="border border-slate-200 rounded-lg p-5 bg-white">
         <label className="block text-sm font-semibold text-slate-900 mb-1">
-          Medical Certificates &amp; Prescriptions * (Compulsory)
+          Medical Certificates &amp; Prescriptions <span className="text-red-600 font-bold ml-1">*</span> <span className="text-xs text-red-600 font-semibold">(Compulsory)</span>
         </label>
         <p className="text-xs text-slate-500 mb-3">
           Upload official doctor prescription, medical certificate, or hospital discharge slip. Max 10 files (PDF, JPG, PNG up to 5 MB each).

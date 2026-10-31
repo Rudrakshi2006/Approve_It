@@ -13,7 +13,7 @@ const SubmitMedicalSchema = z.object({
   payload: z
     .object({
       from_date: z.string().min(1, "Leave From Date is compulsory"),
-      to_date: z.string().min(1, "Leave To Date is compulsory"),
+      to_date: z.string().optional().nullable(),
     })
     .catchall(z.unknown()),
   attachments: z
@@ -62,9 +62,19 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const effectiveToDate =
+    parseResult.data.payload.to_date && parseResult.data.payload.to_date.trim()
+      ? parseResult.data.payload.to_date.trim()
+      : parseResult.data.payload.from_date.trim();
+
   const result = await submitApplication(session, {
     type: "medical",
     ...parseResult.data,
+    payload: {
+      ...parseResult.data.payload,
+      from_date: parseResult.data.payload.from_date.trim(),
+      to_date: effectiveToDate,
+    },
   });
 
   if (!result.ok) {

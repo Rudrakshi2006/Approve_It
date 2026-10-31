@@ -9,6 +9,8 @@ const GeneralSubmitSchema = z.object({
   category: z.string().min(1, "Category is required"),
   subject: z.string().min(3, "Subject must be at least 3 characters").max(200),
   description: z.string().min(5, "Description must be at least 5 characters"),
+  from_date: z.string().optional().nullable(),
+  to_date: z.string().optional().nullable(),
   comment: z.string().max(2000).optional().nullable(),
   urgent: z.boolean().default(false),
   attachments: z
