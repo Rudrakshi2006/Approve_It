@@ -75,13 +75,18 @@ export function MedicalForm({
       return;
     }
 
+    if (attachments.length === 0) {
+      setError("Doctor's prescription or medical certificate is compulsory. Please upload at least one attachment.");
+      return;
+    }
+
     setSubmitting(true);
 
     const fromDateFormatted = formatToDDMMYYYY(fromDate);
     const toDateFormatted = formatToDDMMYYYY(toDate);
     const finalSubject = subject.includes(fromDateFormatted)
       ? subject.trim()
-      : `${subject.trim()} (${fromDateFormatted} to ${toDateFormatted})`;
+      : `${subject.trim()} (${fromDateFormatted === toDateFormatted ? fromDateFormatted : `${fromDateFormatted} to ${toDateFormatted}`})`;
 
     try {
       const res = await fetch("/api/applications/medical", {
@@ -250,7 +255,7 @@ export function MedicalForm({
       {/* Attachments Section */}
       <div className="border border-slate-200 rounded-lg p-5 bg-white">
         <label className="block text-sm font-semibold text-slate-900 mb-1">
-          Medical Certificates &amp; Prescriptions
+          Medical Certificates &amp; Prescriptions * (Compulsory)
         </label>
         <p className="text-xs text-slate-500 mb-3">
           Upload official doctor prescription, medical certificate, or hospital discharge slip. Max 10 files (PDF, JPG, PNG up to 5 MB each).

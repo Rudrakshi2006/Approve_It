@@ -168,19 +168,21 @@ export async function listInboxForApprover(
   }
 
   // For historical tabs: find application IDs where this approver acted
-  const decisionMap = {
-    approved: "approved",
-    rejected: "rejected",
-    returned: "returned",
-  };
-
-  const targetDecision = decisionMap[tab];
-  const { data: stepRows, error: stepErr } = await db
+  let query = db
     .from("application_steps")
     .select("application_id")
-    .eq("actor_login_id", approverLoginId)
-    .eq("decision", targetDecision)
-    .order("at", { ascending: false });
+    .eq("actor_login_id", approverLoginId);
+
+  if (tab === "approved") {
+    // Includes both final approvals ('approved') and verified/forwarded intermediate actions ('forwarded')
+    query = query.in("decision", ["approved", "forwarded"]);
+  } else if (tab === "rejected") {
+    query = query.eq("decision", "rejected");
+  } else if (tab === "returned") {
+    query = query.eq("decision", "returned");
+  }
+
+  const { data: stepRows, error: stepErr } = await query.order("at", { ascending: false });
 
   if (stepErr || !stepRows || stepRows.length === 0) {
     return [];

@@ -71,19 +71,19 @@ export function EmployeeGeneralForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
-        <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-md text-sm">
+        <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-md text-sm font-medium">
           {error}
         </div>
       )}
 
       <div>
         <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-          Category *
+          Category <span className="text-rose-600 font-bold">*</span>
         </label>
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
+          className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 cursor-pointer shadow-xs"
         >
           {CATEGORIES.map((cat) => (
             <option key={cat} value={cat}>
@@ -95,28 +95,28 @@ export function EmployeeGeneralForm() {
 
       <div>
         <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-          Subject *
+          Subject <span className="text-rose-600 font-bold">*</span>
         </label>
         <input
           type="text"
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
           placeholder="e.g. Minutes of Departmental Meeting / Event Proposal"
-          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
+          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 shadow-2xs"
           required
         />
       </div>
 
       <div>
         <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-          Description &amp; Details *
+          Description &amp; Details <span className="text-rose-600 font-bold">*</span>
         </label>
         <textarea
           rows={5}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Provide detailed information regarding this application..."
-          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
+          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 shadow-2xs"
           required
         />
       </div>
@@ -136,7 +136,7 @@ export function EmployeeGeneralForm() {
 
       <div>
         <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-          Supporting Documents &amp; Proofs
+          Supporting Documents &amp; Proofs (Optional)
         </label>
         <AttachmentUploader
           attachments={attachments}
@@ -154,9 +154,9 @@ export function EmployeeGeneralForm() {
         <button
           type="submit"
           disabled={submitting}
-          className="px-5 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-md text-sm font-semibold shadow-sm transition"
+          className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-md text-sm font-semibold shadow-sm transition cursor-pointer"
         >
-          {submitting ? "Submitting..." : "Submit Application"}
+          {submitting ? "Submitting..." : "Submit General Application"}
         </button>
       </div>
     </form>

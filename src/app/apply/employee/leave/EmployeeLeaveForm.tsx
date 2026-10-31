@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AttachmentUploader, type UploadedFileItem } from "@/components/AttachmentUploader";
-import { formatISOtoDDMMYYYY, parseDDMMYYYYtoISO } from "@/lib/dates";
+import { formatISOtoDDMMYYYY } from "@/lib/dates";
 
 interface PreviewData {
   working_days: number;
@@ -33,11 +33,13 @@ export function EmployeeLeaveForm() {
 
   // Trigger preview when fromDate, toDate, or leaveType change
   useEffect(() => {
-    if (!fromDate || !toDate) {
+    if (!fromDate) {
       setPreview(null);
       setPreviewError(null);
       return;
     }
+
+    const effectiveToDate = toDate.trim() || fromDate.trim();
 
     const timer = setTimeout(async () => {
       setPreviewLoading(true);
@@ -49,7 +51,7 @@ export function EmployeeLeaveForm() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             from_date: fromDate.trim(),
-            to_date: toDate.trim(),
+            to_date: effectiveToDate,
             leave_type: leaveType,
           }),
         });
@@ -68,7 +70,7 @@ export function EmployeeLeaveForm() {
       } finally {
         setPreviewLoading(false);
       }
-    }, 400);
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [fromDate, toDate, leaveType]);
@@ -77,8 +79,15 @@ export function EmployeeLeaveForm() {
     e.preventDefault();
     setSubmitError(null);
 
-    if (!fromDate.trim() || !toDate.trim()) {
-      setSubmitError("Please select both From Date and To Date");
+    if (!fromDate.trim()) {
+      setSubmitError("Please select Leave From Date");
+      return;
+    }
+
+    const effectiveToDate = toDate.trim() || fromDate.trim();
+
+    if (effectiveToDate < fromDate.trim()) {
+      setSubmitError("Leave To Date cannot be earlier than From Date");
       return;
     }
 
@@ -93,7 +102,7 @@ export function EmployeeLeaveForm() {
     }
 
     if (preview && preview.working_days === 0) {
-      setSubmitError("Selected date range contains 0 working days");
+      setSubmitError("Selected date range contains 0 working days (all selected days are off-days or holidays)");
       return;
     }
 
@@ -106,7 +115,7 @@ export function EmployeeLeaveForm() {
         body: JSON.stringify({
           leave_type: leaveType,
           from_date: fromDate.trim(),
-          to_date: toDate.trim(),
+          to_date: effectiveToDate,
           reason: reason.trim(),
           comment: reason.trim(),
           attachments: attachments.map((a) => ({
@@ -136,76 +145,56 @@ export function EmployeeLeaveForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {submitError && (
-        <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-md text-sm">
+        <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-md text-sm font-medium">
           {submitError}
         </div>
       )}
 
-      {/* Leave Type Toggle */}
+      {/* Leave Type Dropdown */}
       <div>
         <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-          Leave Type *
+          Leave Type <span className="text-rose-600 font-bold">*</span>
         </label>
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => setLeaveType("personal")}
-            className={`p-3 rounded-lg border text-left transition ${
-              leaveType === "personal"
-                ? "bg-slate-900 border-slate-900 text-white"
-                : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            <span className="font-bold text-sm block">Personal Leave</span>
-            <span className={`text-xs block mt-0.5 ${leaveType === "personal" ? "text-slate-300" : "text-slate-500"}`}>
-              Casual &amp; personal affairs
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setLeaveType("medical")}
-            className={`p-3 rounded-lg border text-left transition ${
-              leaveType === "medical"
-                ? "bg-slate-900 border-slate-900 text-white"
-                : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            <span className="font-bold text-sm block">Medical Leave</span>
-            <span className={`text-xs block mt-0.5 ${leaveType === "medical" ? "text-slate-300" : "text-slate-500"}`}>
-              Illness or medical recovery
-            </span>
-          </button>
-        </div>
+        <select
+          value={leaveType}
+          onChange={(e) => setLeaveType(e.target.value as "personal" | "medical")}
+          className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-md text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 cursor-pointer shadow-xs"
+        >
+          <option value="personal">Personal Leave (Casual, personal &amp; family matters)</option>
+          <option value="medical">Medical Leave (Doctor consultation, illness &amp; recovery)</option>
+        </select>
       </div>
 
-      {/* Date Pickers */}
+      {/* Date Pickers with Visual Calendar Picker */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-            Leave From Date (DD-MM-YYYY) *
+            Leave From Date <span className="text-rose-600 font-bold">*</span>
           </label>
           <input
-            type="text"
-            placeholder="DD-MM-YYYY"
+            type="date"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
-            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
+            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 cursor-pointer shadow-2xs"
             required
           />
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-            Leave To Date (DD-MM-YYYY) *
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+              Leave To Date
+            </label>
+            <span className="text-[11px] text-slate-400 font-normal">
+              (Optional — leave blank for 1 day)
+            </span>
+          </div>
           <input
-            type="text"
-            placeholder="DD-MM-YYYY"
+            type="date"
             value={toDate}
+            min={fromDate || undefined}
             onChange={(e) => setToDate(e.target.value)}
-            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
-            required
+            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 cursor-pointer shadow-2xs"
           />
         </div>
       </div>
@@ -213,12 +202,12 @@ export function EmployeeLeaveForm() {
       {/* Dynamic Working Days & Balance Calculation Preview */}
       {previewLoading && (
         <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-500 italic">
-          Calculating working days, holidays, and leave balance...
+          Calculating working days, off-days, and leave balance...
         </div>
       )}
 
       {previewError && (
-        <div className="p-3 bg-amber-50 border border-amber-300 text-amber-900 rounded-lg text-xs">
+        <div className="p-3 bg-amber-50 border border-amber-300 text-amber-900 rounded-lg text-xs font-medium">
           ⚠️ {previewError}
         </div>
       )}
@@ -228,19 +217,21 @@ export function EmployeeLeaveForm() {
           <div className="flex items-center justify-between pb-3 border-b border-slate-200">
             <div>
               <span className="text-[10px] uppercase font-bold text-slate-500 block">
-                Working Days Calculation
+                Leave Duration
               </span>
               <span className="text-base font-bold text-slate-900">
-                {preview.working_days} Working Day(s)
+                {preview.working_days} Working Day{preview.working_days === 1 ? "" : "s"}
               </span>
               <span className="text-xs text-slate-500 ml-1.5 font-medium">
-                ({preview.total_days} Total Days)
+                ({fromDate === (toDate.trim() || fromDate)
+                  ? formatISOtoDDMMYYYY(fromDate)
+                  : `${formatISOtoDDMMYYYY(fromDate)} to ${formatISOtoDDMMYYYY(toDate.trim() || fromDate)}`})
               </span>
             </div>
 
             <div className="text-right">
               <span className="text-[10px] uppercase font-bold text-slate-500 block">
-                Available {leaveType} Balance
+                Current {leaveType === "medical" ? "Medical" : "Personal"} Balance
               </span>
               <span className="text-base font-mono font-bold text-slate-900">
                 {preview.current_balance} days
@@ -259,37 +250,23 @@ export function EmployeeLeaveForm() {
             </div>
           )}
 
-          {/* Balance projection breakdown */}
-          <div className="grid grid-cols-3 gap-2 pt-2 text-center text-xs">
-            <div className="bg-emerald-100/60 p-2 rounded border border-emerald-300">
-              <span className="block text-[11px] text-emerald-900 font-medium">Paid Deduction</span>
-              <span className="text-sm font-bold text-emerald-950 font-mono">{preview.deducted} days</span>
+          {/* Clean balance summary without paid/unpaid confusion */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 text-center text-xs">
+            <div className="bg-white p-2.5 rounded border border-slate-200">
+              <span className="block text-[11px] text-slate-500 font-medium">Current Balance</span>
+              <span className="text-sm font-bold text-slate-900 font-mono">{preview.current_balance} days</span>
             </div>
 
-            <div className={`p-2 rounded border ${preview.unpaid > 0 ? "bg-rose-100/70 border-rose-300" : "bg-white border-slate-200"}`}>
-              <span className={`block text-[11px] font-medium ${preview.unpaid > 0 ? "text-rose-900 font-bold" : "text-slate-600"}`}>
-                Unpaid Leave
-              </span>
-              <span className={`text-sm font-bold font-mono ${preview.unpaid > 0 ? "text-rose-950 font-black" : "text-slate-900"}`}>
-                {preview.unpaid} days
-              </span>
+            <div className="bg-emerald-50 p-2.5 rounded border border-emerald-200">
+              <span className="block text-[11px] text-emerald-800 font-medium">Leave Requested</span>
+              <span className="text-sm font-bold text-emerald-950 font-mono">{preview.working_days} day{preview.working_days === 1 ? "" : "s"}</span>
             </div>
 
-            <div className="bg-white p-2 rounded border border-slate-200">
-              <span className="block text-[11px] text-slate-600 font-medium">Balance After</span>
+            <div className="bg-white p-2.5 rounded border border-slate-200 col-span-2 sm:col-span-1">
+              <span className="block text-[11px] text-slate-500 font-medium">Balance After</span>
               <span className="text-sm font-bold text-slate-900 font-mono">{preview.balance_after} days</span>
             </div>
           </div>
-
-          {/* Unpaid Warning Banner */}
-          {preview.unpaid > 0 && (
-            <div className="p-2.5 bg-rose-50 border border-rose-300 rounded text-xs text-rose-900 flex items-center gap-2">
-              <span className="text-base">⚠️</span>
-              <span>
-                <strong>Insufficient Leave Balance:</strong> You have only {preview.current_balance} days available. {preview.unpaid} working days will be recorded as <strong>UNPAID LEAVE</strong> upon approval.
-              </span>
-            </div>
-          )}
 
           {/* Overlap Conflict Banner */}
           {preview.has_overlap && (
@@ -305,7 +282,7 @@ export function EmployeeLeaveForm() {
 
       <div>
         <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-          Reason for Leave *
+          Reason for Leave <span className="text-rose-600 font-bold">*</span>
         </label>
         <textarea
           rows={4}
@@ -337,7 +314,7 @@ export function EmployeeLeaveForm() {
         <button
           type="submit"
           disabled={submitting || (preview?.has_overlap ?? false) || (preview?.working_days === 0)}
-          className="px-5 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-md text-sm font-semibold shadow-sm transition"
+          className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-md text-sm font-semibold shadow-sm transition cursor-pointer"
         >
           {submitting ? "Submitting..." : "Submit Leave Application"}
         </button>

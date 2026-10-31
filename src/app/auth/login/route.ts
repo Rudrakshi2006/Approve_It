@@ -21,7 +21,7 @@ export async function GET() {
   const res = NextResponse.redirect(authUrl);
   res.cookies.set("eklink_state", state, {
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/auth",
     maxAge: 600, // 10 minutes

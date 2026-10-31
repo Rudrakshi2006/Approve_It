@@ -63,6 +63,11 @@ export function ReCaForm({
       return;
     }
 
+    if (attachments.length === 0) {
+      setError("Supporting proof document (medical certificate, duty leave slip, or valid evidence) is compulsory. Please upload at least one attachment.");
+      return;
+    }
+
     setSubmitting(true);
 
     const caDateFormatted = formatToDDMMYYYY(caDate);
@@ -270,7 +275,7 @@ export function ReCaForm({
       {/* Attachments Section */}
       <div className="border border-slate-200 rounded-lg p-5 bg-white">
         <label className="block text-sm font-semibold text-slate-900 mb-1">
-          Supporting Documents &amp; Evidence
+          Supporting Documents &amp; Evidence * (Compulsory)
         </label>
         <p className="text-xs text-slate-500 mb-3">
           Upload medical certificate, duty leave letter, or supporting proof. Max 10 files (PDF, JPG, PNG up to 5 MB each).

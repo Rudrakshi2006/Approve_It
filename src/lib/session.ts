@@ -22,7 +22,7 @@ export type Session = {
 
 export const cookieOpts = (maxAge: number) => ({
   httpOnly: true,
-  secure: true,
+  secure: process.env.NODE_ENV === "production",
   sameSite: "lax" as const,
   path: "/",
   maxAge,

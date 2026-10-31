@@ -14,14 +14,32 @@ export default async function HomePage(props: {
   const session = await requirePageSession();
 
   // If approver role, redirect to inbox
+  // Director only performs approvals — direct them immediately to the Approvals Inbox
+  if (session.eklink_role === "director" || session.login_id === "T001") {
+    redirect("/inbox");
+  }
+
+  // If approver role, redirect to inbox
   if (session.eklink_role !== "student") {
     const db = getDb();
     const balances = await getOrMaterializeLeaveBalances(session.login_id);
-    const { data: person } = await db
+    let person: { saturday_group?: string; designation?: string; department?: string } | null = null;
+    const { data: pFull, error: pErr } = await db
       .from("people")
       .select("saturday_group, designation, department")
       .eq("login_id", session.login_id)
       .maybeSingle();
+
+    if (!pErr && pFull) {
+      person = pFull;
+    } else {
+      const { data: pBase } = await db
+        .from("people")
+        .select("designation, department")
+        .eq("login_id", session.login_id)
+        .maybeSingle();
+      person = pBase;
+    }
 
     const employeeApps = await listApplicationsByApplicant(session.login_id);
     const approverIds = Array.from(

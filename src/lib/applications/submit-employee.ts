@@ -88,11 +88,22 @@ export async function submitEmployeeGeneral(
   }
 
   // 2. Fetch full person details for snapshot
-  const { data: person } = await db
-    .from("people")
-    .select("login_id, name, department, designation, eklink_role, saturday_group")
-    .eq("login_id", session.login_id)
-    .maybeSingle();
+  let person: any = null;
+  try {
+    const { data } = await db
+      .from("people")
+      .select("login_id, name, department, designation, eklink_role, saturday_group")
+      .eq("login_id", session.login_id)
+      .maybeSingle();
+    person = data;
+  } catch {
+    const { data } = await db
+      .from("people")
+      .select("login_id, name, department, designation, eklink_role")
+      .eq("login_id", session.login_id)
+      .maybeSingle();
+    person = data;
+  }
 
   const applicantDepartment = person?.department || session.department || "General";
   const applicantSnapshot: ApplicantSnapshot = {
@@ -218,7 +229,8 @@ export async function submitEmployeeLeave(
   }
 
   const fromIso = normalizeDate(input.from_date);
-  const toIso = normalizeDate(input.to_date);
+  const effectiveToRaw = input.to_date && input.to_date.trim() ? input.to_date.trim() : input.from_date.trim();
+  const toIso = normalizeDate(effectiveToRaw);
 
   if (!fromIso || !toIso) {
     return { ok: false, error: "Invalid date format. Expected DD-MM-YYYY or YYYY-MM-DD", status: 422 };
@@ -258,11 +270,22 @@ export async function submitEmployeeLeave(
   }
 
   // 2. Fetch person details for Saturday group & snapshot
-  const { data: person } = await db
-    .from("people")
-    .select("login_id, name, department, designation, eklink_role, saturday_group")
-    .eq("login_id", session.login_id)
-    .maybeSingle();
+  let person: any = null;
+  try {
+    const { data } = await db
+      .from("people")
+      .select("login_id, name, department, designation, eklink_role, saturday_group")
+      .eq("login_id", session.login_id)
+      .maybeSingle();
+    person = data;
+  } catch {
+    const { data } = await db
+      .from("people")
+      .select("login_id, name, department, designation, eklink_role")
+      .eq("login_id", session.login_id)
+      .maybeSingle();
+    person = data;
+  }
 
   const satGroup = person?.saturday_group === "even" ? "even" : "odd";
 
@@ -376,7 +399,12 @@ export async function submitEmployeeLeave(
     comment: input.comment || input.reason,
   };
 
-  const subject = `${input.leave_type === "medical" ? "Medical Leave" : "Personal Leave"} (${input.from_date} to ${input.to_date}) - ${preview.workingDays} working days`;
+  const dateRangeStr =
+    input.from_date === input.to_date
+      ? input.from_date
+      : `${input.from_date} to ${input.to_date}`;
+
+  const subject = `${input.leave_type === "medical" ? "Medical Leave" : "Personal Leave"} (${dateRangeStr}) - ${preview.workingDays} working ${preview.workingDays === 1 ? "day" : "days"}`;
 
   const app = await createAndSubmitApplication({
     type: appType,
@@ -407,7 +435,7 @@ export async function submitEmployeeLeave(
     recipient_login_id: initialApprover,
     application_id: app.id,
     kind: "submitted",
-    message: `New leave application: "${subject}" from ${session.name} (${preview.workingDays} days: ${preview.deducted} paid, ${preview.unpaid} unpaid)`,
+    message: `New leave application: "${subject}" from ${session.name} (${preview.workingDays} working ${preview.workingDays === 1 ? "day" : "days"})`,
   });
 
   return {

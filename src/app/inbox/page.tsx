@@ -60,7 +60,9 @@ export default async function InboxPage(props: {
               ApproveIt
             </span>
             <span className="text-xs bg-slate-900 text-white font-medium px-2 py-0.5 rounded-full capitalize">
-              {session.eklink_role} Inbox
+              {session.eklink_role === "director" || session.login_id === "T001"
+                ? "Director Approvals"
+                : `${session.eklink_role} Inbox`}
             </span>
           </div>
 
@@ -79,12 +81,14 @@ export default async function InboxPage(props: {
             >
               Profile
             </Link>
+            {session.eklink_role !== "director" && session.login_id !== "T001" && (
             <Link
               href="/"
               className="text-xs font-semibold px-2.5 py-1.5 bg-slate-900 text-white rounded hover:bg-slate-800 transition"
             >
               My Applications &amp; Leave
             </Link>
+          )}
             <form action="/auth/logout" method="post">
               <button
                 type="submit"
@@ -100,10 +104,12 @@ export default async function InboxPage(props: {
       <main className="max-w-6xl mx-auto px-4 py-8">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-            {isAdminStaff ? "Administration Staff Portal" : "Approver Inbox"}
+            {session.eklink_role === "director" || session.login_id === "T001" ? "Director Approvals Inbox" : isAdminStaff ? "Administration Staff Portal" : "Approver Inbox"}
           </h1>
           <p className="text-sm text-slate-600 mt-1">
-            {isAdminStaff
+            {session.eklink_role === "director" || session.login_id === "T001"
+              ? "Review and make final approval decisions on student and employee applications."
+              : isAdminStaff
               ? "Verify student ERP attendance records and forward applications to the designated incharge."
               : "Review and digitally verify student leave applications assigned to your step."}
           </p>

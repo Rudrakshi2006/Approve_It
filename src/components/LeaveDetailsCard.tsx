@@ -18,6 +18,11 @@ export function LeaveDetailsCard({ payload, status }: LeaveDetailsCardProps) {
     ? formatISOtoDDMMYYYY(toDateRaw)
     : toDateRaw;
 
+  const displayDate =
+    fromFormatted === toFormatted
+      ? fromFormatted
+      : `${fromFormatted} to ${toFormatted}`;
+
   const workingDays = Number(payload.working_days || 0);
   const totalDays = Number(payload.total_days || 0);
   const excludedDays = (payload.excluded_days as Array<{ date: string; reason: string; description?: string }>) || [];
@@ -27,13 +32,11 @@ export function LeaveDetailsCard({ payload, status }: LeaveDetailsCardProps) {
     deducted?: number;
     unpaid?: number;
     balance_after?: number;
+    deducted_at?: string;
   } | undefined;
 
-  const curBalance = balanceSnap?.balance_before ?? payload.balance_at_submission ?? "-";
-  const deducted = balanceSnap?.deducted ?? payload.projected_deducted ?? "-";
-  const unpaid = balanceSnap?.unpaid ?? payload.projected_unpaid ?? 0;
-  const balanceAfter = balanceSnap?.balance_after ?? payload.projected_balance_after ?? "-";
-
+  const curBalance = String(balanceSnap?.balance_before ?? payload.balance_at_submission ?? "-");
+  const balanceAfter = String(balanceSnap?.balance_after ?? payload.projected_balance_after ?? "-");
   const isDeducted = Boolean(balanceSnap?.deducted_at);
 
   return (
@@ -41,20 +44,22 @@ export function LeaveDetailsCard({ payload, status }: LeaveDetailsCardProps) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 gap-3">
         <div>
           <span className="text-[10px] bg-slate-900 text-white font-mono uppercase px-2 py-0.5 rounded tracking-wide font-bold">
-            {leaveType.toUpperCase()} LEAVE BREAKDOWN
+            {leaveType.toUpperCase()} LEAVE DETAILS
           </span>
           <h3 className="text-base font-bold text-slate-900 mt-1">
-            {fromFormatted} to {toFormatted}
+            {displayDate}
           </h3>
         </div>
 
         <div className="flex items-center gap-2">
           <span className="bg-emerald-100 text-emerald-900 text-xs font-bold px-3 py-1 rounded-full border border-emerald-300">
-            {workingDays} Working Days
+            {workingDays} Working Day{workingDays === 1 ? "" : "s"}
           </span>
-          <span className="text-xs text-slate-500 font-medium">
-            ({totalDays} Calendar Days)
-          </span>
+          {fromFormatted !== toFormatted && (
+            <span className="text-xs text-slate-500 font-medium">
+              ({totalDays} Calendar Days)
+            </span>
+          )}
         </div>
       </div>
 
@@ -62,7 +67,7 @@ export function LeaveDetailsCard({ payload, status }: LeaveDetailsCardProps) {
       {excludedDays.length > 0 && (
         <div className="py-3 border-b border-slate-100 text-xs text-slate-600">
           <span className="font-semibold text-slate-700">Excluded non-working days ({excludedDays.length}):</span>{" "}
-          {excludedDays.map((ex, i) => (
+          {excludedDays.map((ex) => (
             <span key={ex.date} className="inline-block bg-slate-100 text-slate-700 px-2 py-0.5 rounded mr-1.5 mt-1 font-mono text-[11px]">
               {/^\d{4}-\d{2}-\d{2}$/.test(ex.date) ? formatISOtoDDMMYYYY(ex.date) : ex.date} ({ex.description || ex.reason})
             </span>
@@ -71,10 +76,10 @@ export function LeaveDetailsCard({ payload, status }: LeaveDetailsCardProps) {
       )}
 
       {/* Balance Calculation Table */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 text-xs">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 text-xs">
         <div className="bg-slate-50 p-3 rounded border border-slate-200">
           <span className="text-slate-500 block text-[11px]">
-            {isDeducted ? "Balance Before Approval" : "Balance at Submission"}
+            {isDeducted ? "Balance Before Approval" : "Current Balance"}
           </span>
           <span className="text-base font-bold text-slate-900 font-mono">
             {curBalance} <span className="text-xs font-normal text-slate-500">days</span>
@@ -83,41 +88,22 @@ export function LeaveDetailsCard({ payload, status }: LeaveDetailsCardProps) {
 
         <div className="bg-emerald-50 p-3 rounded border border-emerald-200">
           <span className="text-emerald-800 block text-[11px] font-medium">
-            {isDeducted ? "Paid Days Deducted" : "Projected Paid Deduction"}
+            Leave Requested
           </span>
           <span className="text-base font-bold text-emerald-900 font-mono">
-            {deducted} <span className="text-xs font-normal text-emerald-700">days</span>
-          </span>
-        </div>
-
-        <div className={`p-3 rounded border ${Number(unpaid) > 0 ? "bg-rose-50 border-rose-300" : "bg-slate-50 border-slate-200"}`}>
-          <span className={`block text-[11px] font-medium ${Number(unpaid) > 0 ? "text-rose-800" : "text-slate-500"}`}>
-            {isDeducted ? "Unpaid Leave Days" : "Projected Unpaid Leave"}
-          </span>
-          <span className={`text-base font-bold font-mono ${Number(unpaid) > 0 ? "text-rose-900" : "text-slate-900"}`}>
-            {unpaid} <span className="text-xs font-normal">days</span>
+            {workingDays} <span className="text-xs font-normal text-emerald-700">day{workingDays === 1 ? "" : "s"}</span>
           </span>
         </div>
 
         <div className="bg-slate-50 p-3 rounded border border-slate-200">
           <span className="text-slate-500 block text-[11px]">
-            {isDeducted ? "Balance Remaining" : "Projected Balance After"}
+            {isDeducted ? "Balance Remaining" : "Balance After"}
           </span>
           <span className="text-base font-bold text-slate-900 font-mono">
             {balanceAfter} <span className="text-xs font-normal text-slate-500">days</span>
           </span>
         </div>
       </div>
-
-      {/* Warning for Unpaid Leave */}
-      {Number(unpaid) > 0 && (
-        <div className="mt-3.5 bg-rose-50 border border-rose-200 rounded p-2.5 text-xs text-rose-900 flex items-center gap-2">
-          <span className="text-base">⚠️</span>
-          <span>
-            <strong>Insufficient Leave Balance:</strong> {unpaid} working day(s) will be processed as <strong>UNPAID LEAVE</strong> upon final approval.
-          </span>
-        </div>
-      )}
     </div>
   );
 }

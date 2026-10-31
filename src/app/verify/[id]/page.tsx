@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getDb } from "@/lib/db";
-import { formatToIST } from "@/lib/date";
+import { formatToIST, formatDatesInText } from "@/lib/date";
 
 export default async function VerifyStampPage(props: {
   params: Promise<{ id: string }>;
@@ -120,7 +120,7 @@ export default async function VerifyStampPage(props: {
             <div className="pt-2 border-t border-slate-200">
               <span className="text-slate-400 block">Associated Application:</span>
               <span className="font-semibold text-slate-900 block truncate">
-                {app.subject}
+                {formatDatesInText(app.subject)}
               </span>
               <span className="text-[11px] text-slate-500">
                 Type: {app.type.toUpperCase()} • Overall Status: {app.status.toUpperCase()}

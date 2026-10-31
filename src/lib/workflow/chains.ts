@@ -31,6 +31,7 @@ export const StepConfigSchema = z.object({
   can_reject: z.boolean().optional(),
   can_return: z.boolean().optional(),
   comment_required_on_reject: z.boolean().optional(),
+  comment_required_on_return: z.boolean().optional(),
   comment_required_on_forward: z.boolean().optional(),
   attendance_required: z.boolean().optional(),
   decision_label: z.string().optional(),

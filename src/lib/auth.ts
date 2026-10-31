@@ -176,3 +176,5 @@ export async function requireApiWorkflowAdmin(rawCookie?: string): Promise<
 
   return auth;
 }
+
+export const requireAdminSession = requireApiWorkflowAdmin;

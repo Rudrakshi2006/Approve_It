@@ -56,11 +56,16 @@ export function HackathonForm({
       return;
     }
 
+    if (attachments.length === 0) {
+      setError("Hackathon brochure, acceptance letter, or event proof document is compulsory. Please upload at least one attachment.");
+      return;
+    }
+
     setSubmitting(true);
 
     const fromDateFormatted = formatToDDMMYYYY(fromDate);
     const toDateFormatted = formatToDDMMYYYY(toDate);
-    const subject = `Hackathon On-Duty Leave: ${eventName.trim()} (${fromDateFormatted} to ${toDateFormatted})`;
+    const subject = `Hackathon Leave: ${eventName.trim()} (${fromDateFormatted === toDateFormatted ? fromDateFormatted : `${fromDateFormatted} to ${toDateFormatted}`})`;
     const payload = {
       event_name: eventName.trim(),
       from_date: fromDate,
@@ -267,7 +272,7 @@ export function HackathonForm({
       {/* Attachments Section */}
       <div className="border border-slate-200 rounded-lg p-5 bg-white">
         <label className="block text-sm font-semibold text-slate-900 mb-1">
-          Hackathon Brochure / Acceptance Letter / Proof
+          Hackathon Brochure / Acceptance Letter / Proof * (Compulsory)
         </label>
         <p className="text-xs text-slate-500 mb-3">
           Upload confirmation email, shortlist brochure, or invitation letter. Max 10 files (PDF, JPG, PNG up to 5 MB each).

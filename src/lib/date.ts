@@ -56,8 +56,14 @@ export function formatToDDMMYYYY(dateStr?: string | null): string {
 
 /**
  * Replaces any YYYY-MM-DD pattern in a text string with DD-MM-YYYY
+ * and normalizes "Hackathon On-Duty Leave:" to "Hackathon Leave:"
  */
 export function formatDatesInText(text?: string | null): string {
   if (!text) return "";
-  return text.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, "$3-$2-$1");
+  const formatted = text
+    .replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, "$3-$2-$1")
+    .replace(/Hackathon On-Duty Leave:/g, "Hackathon Leave:");
+
+  // Collapse identical date ranges like "09-11-2026 to 09-11-2026" into single date "09-11-2026"
+  return formatted.replace(/(\d{2}-\d{2}-\d{4})\s+to\s+\1/g, "$1");
 }

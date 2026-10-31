@@ -18,8 +18,11 @@ export function ReturnedEditActions({
   const [subject, setSubject] = useState(initialSubject);
   const [comment, setComment] = useState(initialComment || "");
   const [saving, setSaving] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
   const [resubmitting, setResubmitting] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
+  const [showWithdrawConfirm, setShowWithdrawConfirm] = useState(false);
+  const [withdrawReason, setWithdrawReason] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   // Edit details
@@ -27,6 +30,7 @@ export function ReturnedEditActions({
     e.preventDefault();
     setSaving(true);
     setError(null);
+    setSavedSuccess(false);
 
     try {
       const res = await fetch(`/api/applications/${applicationId}`, {
@@ -38,7 +42,8 @@ export function ReturnedEditActions({
       if (!res.ok) {
         setError(data.error || "Failed to update details");
       } else {
-        alert("Details updated successfully!");
+        setSavedSuccess(true);
+        setTimeout(() => setSavedSuccess(false), 3000);
         router.refresh();
       }
     } catch {
@@ -78,7 +83,6 @@ export function ReturnedEditActions({
 
   // Soft remove attachment
   const handleRemoveAttachment = async (attachId: string) => {
-    if (!confirm("Are you sure you want to remove this document?")) return;
     setError(null);
 
     try {
@@ -98,7 +102,6 @@ export function ReturnedEditActions({
 
   // Resubmit application (Test A9)
   const handleResubmit = async () => {
-    if (!confirm("Ready to resubmit this application for verification?")) return;
     setResubmitting(true);
     setError(null);
 
@@ -123,9 +126,6 @@ export function ReturnedEditActions({
 
   // Withdraw application (Test A10)
   const handleWithdraw = async () => {
-    const reason = prompt("Optional: Provide reason for withdrawing this application:");
-    if (reason === null) return; // User cancelled prompt
-
     setWithdrawing(true);
     setError(null);
 
@@ -133,7 +133,7 @@ export function ReturnedEditActions({
       const res = await fetch(`/api/applications/${applicationId}/withdraw`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify({ reason: withdrawReason.trim() || null }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -156,13 +156,46 @@ export function ReturnedEditActions({
         </h3>
         <button
           type="button"
-          onClick={handleWithdraw}
+          onClick={() => setShowWithdrawConfirm(true)}
           disabled={withdrawing}
           className="text-xs text-rose-600 hover:text-rose-800 font-semibold underline"
         >
           {withdrawing ? "Cancelling..." : "Withdraw Application"}
         </button>
       </div>
+
+      {showWithdrawConfirm && (
+        <div className="bg-rose-50 border border-rose-300 rounded-lg p-4 mb-4 text-xs space-y-2.5">
+          <p className="font-bold text-rose-900">
+            ⚠️ Confirm Withdrawal: Are you sure you want to withdraw this application?
+          </p>
+          <input
+            type="text"
+            value={withdrawReason}
+            onChange={(e) => setWithdrawReason(e.target.value)}
+            placeholder="Optional reason for withdrawal..."
+            className="w-full p-2 border border-rose-200 rounded text-xs bg-white text-slate-800"
+          />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleWithdraw}
+              disabled={withdrawing}
+              className="bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-bold px-3 py-1.5 rounded transition shadow-xs"
+            >
+              {withdrawing ? "Withdrawing..." : "Yes, Withdraw Application"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowWithdrawConfirm(false)}
+              disabled={withdrawing}
+              className="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium px-3 py-1.5 rounded transition"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       <p className="text-xs text-indigo-900 mb-4">
         Your reviewer returned this application. You can edit the subject/remarks, attach requested documents, remove incorrect files, and resubmit.
@@ -174,64 +207,72 @@ export function ReturnedEditActions({
         </div>
       )}
 
-      {/* Edit Form */}
-      <form onSubmit={handleSaveDetails} className="space-y-3 mb-5">
+      {savedSuccess && (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs p-3 rounded mb-4 font-semibold">
+          ✓ Details updated successfully!
+        </div>
+      )}
+
+      {/* Form to update subject and comment */}
+      <form onSubmit={handleSaveDetails} className="space-y-4 bg-white p-4 rounded border border-indigo-200 mb-4">
         <div>
-          <label className="block text-xs font-semibold text-indigo-950 mb-1">
-            Subject
+          <label className="block text-xs font-bold text-slate-700 mb-1">
+            Subject Line
           </label>
           <input
             type="text"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-            className="w-full px-3 py-2 bg-white border border-indigo-200 rounded text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-600"
+            required
+            className="w-full text-xs p-2 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-indigo-950 mb-1">
-            Student Notes / Clarification
+          <label className="block text-xs font-bold text-slate-700 mb-1">
+            Applicant Note / Reason
           </label>
           <textarea
-            rows={2}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            className="w-full px-3 py-2 bg-white border border-indigo-200 rounded text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-600"
+            rows={3}
+            className="w-full text-xs p-2 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500"
+            placeholder="Clarify or correct your original reason..."
           />
         </div>
 
         <button
           type="submit"
           disabled={saving}
-          className="bg-indigo-900 hover:bg-indigo-800 text-white text-xs font-semibold px-3 py-1.5 rounded transition"
+          className="text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded transition disabled:opacity-50"
         >
-          {saving ? "Saving Changes..." : "Save Edits"}
+          {saving ? "Saving Changes..." : "Save Subject & Remarks"}
         </button>
       </form>
 
-      {/* Manage Attachments (Soft Remove / Add) */}
-      <div className="border-t border-indigo-200 pt-4 mb-5">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold text-indigo-950">
-            Manage Attached Documents ({attachments.length}/10)
-          </span>
+      {/* Attachments Editor */}
+      <div className="bg-white p-4 rounded border border-indigo-200 mb-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold text-slate-700">
+            Attached Documents ({attachments.length}/10)
+          </label>
           {attachments.length < 10 && (
-            <label className="cursor-pointer text-xs font-bold text-indigo-700 bg-white border border-indigo-300 hover:bg-indigo-50 px-2.5 py-1 rounded transition">
-              + Attach Additional Document
+            <label className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer border border-indigo-200 px-2 py-1 rounded hover:bg-indigo-50 transition">
+              + Upload File
               <input
                 type="file"
-                accept=".pdf,.jpg,.jpeg,.png"
-                onChange={handleAddAttachment}
                 className="hidden"
+                accept=".pdf,.png,.jpg,.jpeg,.docx"
+                onChange={handleAddAttachment}
               />
             </label>
           )}
         </div>
 
-        <ul className="divide-y divide-indigo-100 bg-white rounded border border-indigo-200 text-xs">
+        <ul className="divide-y divide-slate-100 text-xs">
           {attachments.map((a) => (
-            <li key={a.id} className="flex items-center justify-between p-2">
-              <span className="truncate text-slate-800">{a.original_name}</span>
+            <li key={a.id} className="py-1.5 flex items-center justify-between">
+              <span className="truncate text-slate-700">{a.original_name}</span>
               <button
                 type="button"
                 onClick={() => handleRemoveAttachment(a.id)}
@@ -262,39 +303,106 @@ export function ReturnedEditActions({
 export function WithdrawOnlyAction({ applicationId }: { applicationId: string }) {
   const router = useRouter();
   const [withdrawing, setWithdrawing] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const handleWithdraw = async () => {
-    const reason = prompt("Optional: Provide reason for withdrawing this application:");
-    if (reason === null) return;
-
     setWithdrawing(true);
+    setError(null);
     try {
       const res = await fetch(`/api/applications/${applicationId}/withdraw`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify({ reason: reason.trim() || null }),
       });
+      const data = await res.json();
       if (res.ok) {
         router.refresh();
       } else {
-        const data = await res.json();
-        alert(data.error || "Failed to withdraw");
+        setError(data.error || "Failed to withdraw");
         setWithdrawing(false);
       }
     } catch {
-      alert("Network error");
+      setError("Network error");
       setWithdrawing(false);
     }
   };
 
+  if (!showConfirm) {
+    return (
+      <button
+        type="button"
+        onClick={() => setShowConfirm(true)}
+        className="text-xs text-rose-600 hover:text-rose-800 font-semibold border border-rose-200 hover:bg-rose-50 px-3 py-1.5 rounded transition cursor-pointer"
+      >
+        Cancel / Withdraw Application
+      </button>
+    );
+  }
+
   return (
-    <button
-      type="button"
-      onClick={handleWithdraw}
-      disabled={withdrawing}
-      className="text-xs text-rose-600 hover:text-rose-800 font-semibold border border-rose-200 hover:bg-rose-50 px-3 py-1.5 rounded transition"
-    >
-      {withdrawing ? "Cancelling..." : "Cancel / Withdraw Application"}
-    </button>
+    <div className="bg-rose-50 border border-rose-300 rounded-lg p-4 max-w-lg space-y-3">
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-bold text-rose-900 uppercase tracking-wide">
+          ⚠️ Confirm Application Withdrawal
+        </h4>
+        <button
+          type="button"
+          onClick={() => {
+            setShowConfirm(false);
+            setError(null);
+          }}
+          className="text-slate-400 hover:text-slate-600 text-xs font-bold"
+        >
+          ✕ Close
+        </button>
+      </div>
+
+      <p className="text-xs text-rose-800">
+        Are you sure you want to withdraw this application? This action will cancel the application and remove it from reviewer queues.
+      </p>
+
+      <div>
+        <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+          Reason for withdrawal (Optional):
+        </label>
+        <textarea
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="e.g. Schedule changed, no longer required..."
+          rows={2}
+          className="w-full text-xs p-2 border border-slate-300 rounded focus:ring-1 focus:ring-rose-500 bg-white"
+        />
+      </div>
+
+      {error && (
+        <div className="bg-rose-100 border border-rose-300 text-rose-900 text-xs p-2 rounded font-medium">
+          {error}
+        </div>
+      )}
+
+      <div className="flex items-center gap-2 pt-1">
+        <button
+          type="button"
+          onClick={handleWithdraw}
+          disabled={withdrawing}
+          className="bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-bold px-3.5 py-1.5 rounded transition shadow-xs cursor-pointer"
+        >
+          {withdrawing ? "Withdrawing..." : "Yes, Withdraw Application"}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setShowConfirm(false);
+            setError(null);
+          }}
+          disabled={withdrawing}
+          className="bg-white hover:bg-slate-100 text-slate-700 text-xs font-medium px-3 py-1.5 border border-slate-300 rounded transition cursor-pointer"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
   );
 }

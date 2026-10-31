@@ -6,8 +6,8 @@ import { previewLeave } from "@/lib/leave/service";
 import { parseDDMMYYYYtoISO } from "@/lib/dates";
 
 const PreviewSchema = z.object({
-  from_date: z.string().min(1),
-  to_date: z.string().min(1),
+  from_date: z.string().min(1, "From date is required"),
+  to_date: z.string().optional().nullable(),
   leave_type: z.enum(["medical", "personal"]),
   saturday_group: z.enum(["odd", "even"]).optional(),
 });
@@ -38,14 +38,15 @@ export async function POST(request: NextRequest) {
   }
 
   const { from_date, to_date, leave_type, saturday_group } = parseResult.data;
+  const effectiveToDateRaw = to_date && to_date.trim() ? to_date.trim() : from_date.trim();
 
   // Normalize dates
   const fromIso = /^\d{2}-\d{2}-\d{4}$/.test(from_date)
     ? parseDDMMYYYYtoISO(from_date)
     : from_date;
-  const toIso = /^\d{2}-\d{2}-\d{4}$/.test(to_date)
-    ? parseDDMMYYYYtoISO(to_date)
-    : to_date;
+  const toIso = /^\d{2}-\d{2}-\d{4}$/.test(effectiveToDateRaw)
+    ? parseDDMMYYYYtoISO(effectiveToDateRaw)
+    : effectiveToDateRaw;
 
   if (!fromIso || !toIso) {
     return NextResponse.json({ error: "Invalid date format. Expected DD-MM-YYYY or YYYY-MM-DD" }, { status: 422 });

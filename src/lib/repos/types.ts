@@ -3,11 +3,14 @@ import type { ApprovalChain } from "../workflow/chains";
 export interface ApplicantSnapshot {
   name: string;
   login_id: string;
-  email: string;
+  email?: string | null;
   department: string;
   batch?: string | null;
   section?: string | null;
   semester?: number | null;
+  designation?: string | null;
+  saturday_group?: string | null;
+  role?: string | null;
 }
 
 export interface ApplicationRecord {

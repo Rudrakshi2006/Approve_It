@@ -63,7 +63,7 @@ describe("Phase 5: Notification Matrix & Lifecycle Events", () => {
 
     const textWithDates = "Hackathon On-Duty Leave: TRINETRA (2026-11-08 to 2026-11-09)";
     expect(formatDatesInText(textWithDates)).toBe(
-      "Hackathon On-Duty Leave: TRINETRA (08-11-2026 to 09-11-2026)"
+      "Hackathon Leave: TRINETRA (08-11-2026 to 09-11-2026)"
     );
 
     const missedCaText = "Re-CA: Math (Missed on 2026-10-15)";

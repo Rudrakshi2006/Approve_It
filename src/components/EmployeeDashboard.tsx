@@ -2,7 +2,7 @@ import Link from "next/link";
 import { NotificationBell } from "./NotificationBell";
 import { formatToIST, formatDatesInText } from "@/lib/date";
 import type { Session } from "@/lib/session";
-import type { ApplicationDetail } from "@/lib/repos/types";
+import type { ApplicationRecord } from "@/lib/repos/types";
 
 interface EmployeeDashboardProps {
   session: Session;
@@ -12,7 +12,7 @@ interface EmployeeDashboardProps {
     designation?: string;
     department?: string;
   } | null;
-  applications: ApplicationDetail[];
+  applications: ApplicationRecord[];
   approverNameMap: Record<string, string>;
   pendingInboxCount: number;
   activeTab?: string;

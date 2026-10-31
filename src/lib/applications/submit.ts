@@ -55,6 +55,13 @@ export async function submitApplication(
   const today = getTodayIST();
 
   if (input.type === "hackathon") {
+    if (!input.attachments || input.attachments.length === 0) {
+      return {
+        ok: false,
+        error: "Hackathon brochure, acceptance letter, or event proof document is compulsory",
+        status: 422,
+      };
+    }
     const fromDate = String(input.payload?.from_date || "");
     const toDate = String(input.payload?.to_date || "");
     if (fromDate && fromDate <= today) {
@@ -74,6 +81,13 @@ export async function submitApplication(
   }
 
   if (input.type === "re_ca") {
+    if (!input.attachments || input.attachments.length === 0) {
+      return {
+        ok: false,
+        error: "Supporting proof document is compulsory for Re-CA applications",
+        status: 422,
+      };
+    }
     const caDate = String(input.payload?.ca_date || "");
     if (caDate && caDate >= today) {
       return {
@@ -85,6 +99,13 @@ export async function submitApplication(
   }
 
   if (input.type === "medical") {
+    if (!input.attachments || input.attachments.length === 0) {
+      return {
+        ok: false,
+        error: "Doctor's prescription or medical certificate is compulsory for medical leave applications",
+        status: 422,
+      };
+    }
     const fromDate = String(input.payload?.from_date || "").trim();
     const toDate = String(input.payload?.to_date || "").trim();
 

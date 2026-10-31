@@ -8,7 +8,7 @@ import { ATTACHMENT_CONFIG } from "@/lib/attachments";
 const LeaveSubmitSchema = z.object({
   leave_type: z.enum(["medical", "personal"]),
   from_date: z.string().min(1, "From date is required"),
-  to_date: z.string().min(1, "To date is required"),
+  to_date: z.string().optional().nullable(),
   reason: z.string().min(3, "Reason must be at least 3 characters"),
   comment: z.string().max(2000).optional().nullable(),
   attachments: z
@@ -55,7 +55,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = await submitEmployeeLeave(session, parseResult.data);
+  const effectiveToDate = parseResult.data.to_date && parseResult.data.to_date.trim()
+    ? parseResult.data.to_date.trim()
+    : parseResult.data.from_date.trim();
+
+  const result = await submitEmployeeLeave(session, {
+    ...parseResult.data,
+    to_date: effectiveToDate,
+  });
+
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: result.status });
   }

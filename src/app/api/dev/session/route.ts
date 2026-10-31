@@ -195,13 +195,55 @@ export async function GET(request: NextRequest) {
   const nextParam =
     request.nextUrl.searchParams.get("next") ||
     request.nextUrl.searchParams.get("redirect");
-  const targetUrl =
+  let refererTarget: string | null = null;
+  if (!nextParam) {
+    const referer = request.headers.get("referer");
+    if (referer) {
+      try {
+        const u = new URL(referer);
+        if (
+          u.pathname &&
+          !u.pathname.startsWith("/api") &&
+          !u.pathname.startsWith("/auth")
+        ) {
+          refererTarget = u.pathname + u.search;
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  let targetUrl =
     nextParam ||
     redirectTarget ||
+    refererTarget ||
     (sessionData.eklink_role === "student" ? "/" : "/inbox");
 
+  if (sessionData.eklink_role === "director" || sessionData.login_id === "T001") {
+    targetUrl = "/inbox";
+  } else if (sessionData.eklink_role === "student") {
+    if (
+      targetUrl.startsWith("/inbox") ||
+      targetUrl.startsWith("/apply/employee") ||
+      targetUrl.startsWith("/admin")
+    ) {
+      targetUrl = "/";
+    }
+  } else {
+    if (
+      targetUrl.startsWith("/apply/medical") ||
+      targetUrl.startsWith("/apply/hackathon") ||
+      targetUrl.startsWith("/apply/re_ca") ||
+      targetUrl.startsWith("/apply/general")
+    ) {
+      targetUrl = "/";
+    }
+  }
+
   const env = getEnv();
-  const response = NextResponse.redirect(new URL(targetUrl, env.APP_URL));
+  const baseUrl = request.nextUrl.origin || env.APP_URL;
+  const response = NextResponse.redirect(new URL(targetUrl, baseUrl));
   response.cookies.set(SESSION_COOKIE, token, cookieOpts(SESSION_MAX_AGE));
 
   return response;
