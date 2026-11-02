@@ -192,9 +192,11 @@ export async function GET(request: NextRequest) {
   }
 
   const token = await signSession(sessionData);
-  const nextParam =
+  const rawNextParam =
     request.nextUrl.searchParams.get("next") ||
     request.nextUrl.searchParams.get("redirect");
+  const nextParam =
+    rawNextParam && !rawNextParam.startsWith("/auth") ? rawNextParam : null;
   let refererTarget: string | null = null;
   if (!nextParam) {
     const referer = request.headers.get("referer");
@@ -219,6 +221,10 @@ export async function GET(request: NextRequest) {
     redirectTarget ||
     refererTarget ||
     (sessionData.eklink_role === "student" ? "/" : "/inbox");
+
+  if (targetUrl.startsWith("/auth")) {
+    targetUrl = sessionData.eklink_role === "student" ? "/" : "/inbox";
+  }
 
   if (sessionData.eklink_role === "director" || sessionData.login_id === "T001") {
     targetUrl = "/inbox";

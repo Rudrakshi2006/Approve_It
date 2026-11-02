@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { DevRoleBar } from "@/components/DevRoleBar";
 
 export const metadata: Metadata = {
   title: "ApproveIt",
@@ -14,8 +13,22 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased font-sans">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                if (window.location.search.includes("synced=1")) {
+                  const u = new URL(window.location.href);
+                  u.searchParams.delete("synced");
+                  window.history.replaceState({}, "", u.pathname + (u.search ? u.search : ""));
+                }
+              } catch (_) {}
+            `,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">
-        <DevRoleBar />
         {children}
       </body>
     </html>
