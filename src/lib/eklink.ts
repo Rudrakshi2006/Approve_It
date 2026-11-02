@@ -114,8 +114,22 @@ export async function exchangeCode(code: string): Promise<string> {
   }
 
   if (!response.ok) {
+    let bodyText = "";
+    try {
+      bodyText = await response.text();
+    } catch {
+      // ignore
+    }
+
     if (process.env.NODE_ENV !== "production") {
-      console.error(`[exchangeCode failed]: HTTP ${response.status}`);
+      console.error(`[exchangeCode failed]: HTTP ${response.status}`, bodyText);
+    }
+
+    if (bodyText.includes("invalid_client")) {
+      throw new Error("invalid_client");
+    }
+    if (bodyText.includes("invalid_grant")) {
+      throw new Error("invalid_grant");
     }
     throw new Error("code_exchange_failed");
   }

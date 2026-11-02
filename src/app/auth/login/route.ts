@@ -1,17 +1,17 @@
 import { randomBytes } from "node:crypto";
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { getEnv } from "@/lib/env";
-import { getSession } from "@/lib/session";
 
-export async function GET() {
-  // If user already has a valid session, redirect to home
-  const existingSession = await getSession();
-  if (existingSession) {
-    const env = getEnv();
-    return NextResponse.redirect(new URL("/", env.APP_URL));
+export async function GET(request: NextRequest) {
+  const env = getEnv();
+
+  // If ?dev=true is explicitly requested in development, allow optional dev select
+  const searchParams = request.nextUrl.searchParams;
+  if (process.env.NODE_ENV !== "production" && searchParams.get("dev") === "true") {
+    return NextResponse.redirect(new URL("/auth/select", env.APP_URL));
   }
 
-  const env = getEnv();
+  // Redirect directly to EkLink Central SSO
   const state = randomBytes(32).toString("base64url");
   const authUrl = new URL("/authorize", env.EKLINK_URL);
   authUrl.searchParams.set("client_id", env.EKLINK_CLIENT_ID);
@@ -26,6 +26,7 @@ export async function GET() {
     path: "/auth",
     maxAge: 600, // 10 minutes
   });
+  res.headers.set("Cache-Control", "no-store");
 
   return res;
 }
