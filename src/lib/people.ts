@@ -83,7 +83,12 @@ export async function upsertPerson(
   const nowIso = new Date().toISOString();
 
   if (existingPerson) {
-    // Update existing person while preserving semester and signature_path
+    // Update existing person while preserving semester, signature_path, and pre-configured department
+    const resolvedDept =
+      claims.department ||
+      existingPerson.department ||
+      (claims.role === "hod" ? "CSE" : null);
+
     const { error: updateError } = await db
       .from("people")
       .update({
@@ -91,14 +96,17 @@ export async function upsertPerson(
         name: claims.name,
         email: claims.email.trim().toLowerCase(),
         eklink_role: claims.role,
-        department: claims.department,
-        batch: claims.batch,
-        section: claims.section,
+        department: resolvedDept,
+        batch: claims.batch || existingPerson.batch,
+        section: claims.section || existingPerson.section,
         updated_at: nowIso,
       })
       .eq("login_id", existingPerson.login_id);
 
-    if (updateError) throw new Error("person_update_failed");
+    if (updateError) {
+      console.error("[upsertPerson update error]:", updateError);
+      throw new Error(`person_update_failed: ${updateError.message}`);
+    }
   } else {
     // Insert new person
     const { error: insertError } = await db.from("people").insert({
@@ -107,7 +115,7 @@ export async function upsertPerson(
       name: claims.name,
       email: claims.email.trim().toLowerCase(),
       eklink_role: claims.role,
-      department: claims.department,
+      department: claims.department || (claims.role === "hod" ? "CSE" : null),
       batch: claims.batch,
       section: claims.section,
       semester: null,
@@ -115,6 +123,9 @@ export async function upsertPerson(
       updated_at: nowIso,
     });
 
-    if (insertError) throw new Error("person_insert_failed");
+    if (insertError) {
+      console.error("[upsertPerson insert error]:", insertError);
+      throw new Error(`person_insert_failed: ${insertError.message}`);
+    }
   }
 }
