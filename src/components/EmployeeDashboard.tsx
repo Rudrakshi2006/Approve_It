@@ -29,7 +29,7 @@ export function EmployeeDashboard({
 }: EmployeeDashboardProps) {
   const satGroup = person?.saturday_group === "even" ? "Even" : "Odd";
   const designation = person?.designation || (session.eklink_role === "hod" ? "Head of Department" : "Faculty / Staff");
-  const dept = person?.department || session.department || "General";
+  const dept = person?.department || session.department || "CSE";
 
   const filteredApps = applications.filter((app) => {
     if (activeTab === "leave") {

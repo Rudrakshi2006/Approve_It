@@ -87,7 +87,7 @@ export async function upsertPerson(
     const resolvedDept =
       claims.department ||
       existingPerson.department ||
-      (claims.role === "hod" ? "CSE" : null);
+      (claims.role === "director" ? null : "CSE");
 
     const { error: updateError } = await db
       .from("people")
@@ -109,13 +109,14 @@ export async function upsertPerson(
     }
   } else {
     // Insert new person
+    const resolvedDept = claims.department || (claims.role === "director" ? null : "CSE");
     const { error: insertError } = await db.from("people").insert({
       login_id: claims.login_id,
       eklink_sub: claims.sub,
       name: claims.name,
       email: claims.email.trim().toLowerCase(),
       eklink_role: claims.role,
-      department: claims.department || (claims.role === "hod" ? "CSE" : null),
+      department: resolvedDept,
       batch: claims.batch,
       section: claims.section,
       semester: null,

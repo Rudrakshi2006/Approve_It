@@ -73,11 +73,19 @@ export async function POST(
   // Resolve approver for this returned step
   const resolutionContext: ApproverResolutionContext = {
     async findPersonsByRoleAndDept(role: string, department: string) {
-      const { data } = await db
+      let { data } = await db
         .from("people")
         .select("login_id")
         .eq("eklink_role", role)
         .eq("department", department);
+      if (!data || data.length === 0) {
+        const fallback = await db
+          .from("people")
+          .select("login_id")
+          .eq("eklink_role", role)
+          .eq("department", "CSE");
+        data = fallback.data;
+      }
       return (data || []).map((r: { login_id: string }) => r.login_id);
     },
     async findPersonsByRole(role: string) {

@@ -1,6 +1,6 @@
 login_id,name,college_email,role,department
 T004,Dr. Sagarkumar Shridhar Badhiye,sagarkumar.badhiye@sitnagpur.siu.edu.in,hod,CSE
-DIR4001,Dr. Ananya Mukherjee,ananya.mukherjee@sitnagpur.edu.in,director,
+T001,Dr. Nitin Rakesh,nitin.rakesh@sitnagpur.siu.edu.in,director,
 FAC2001,Prof. Vikram Deshmukh,vikram.deshmukh@sitnagpur.edu.in,faculty,CSE
 FAC2002,Prof. Neha Kulkarni,neha.kulkarni@sitnagpur.edu.in,faculty,CSE
 FAC2003,Prof. Amit Verma,amit.verma@sitnagpur.edu.in,faculty,CSE

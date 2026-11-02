@@ -107,7 +107,7 @@ export async function submitEmployeeGeneral(
     person = data;
   }
 
-  const applicantDepartment = person?.department || session.department || "General";
+  const applicantDepartment = person?.department || session.department || "CSE";
   const applicantSnapshot: ApplicantSnapshot = {
     login_id: session.login_id,
     name: person?.name || session.name,
@@ -123,11 +123,19 @@ export async function submitEmployeeGeneral(
   // 3. Resolve Step 0 approver
   const resolutionContext: ApproverResolutionContext = {
     async findPersonsByRoleAndDept(role: string, department: string) {
-      const { data } = await db
+      let { data } = await db
         .from("people")
         .select("login_id")
         .eq("eklink_role", role)
         .eq("department", department);
+      if (!data || data.length === 0) {
+        const fallback = await db
+          .from("people")
+          .select("login_id")
+          .eq("eklink_role", role)
+          .eq("department", "CSE");
+        data = fallback.data;
+      }
       return (data || []).map((r: { login_id: string }) => r.login_id);
     },
     async findPersonsByRole(role: string) {
@@ -327,7 +335,7 @@ export async function submitEmployeeLeave(
     };
   }
 
-  const applicantDepartment = person?.department || session.department || "General";
+  const applicantDepartment = person?.department || session.department || "CSE";
   const applicantSnapshot: ApplicantSnapshot = {
     login_id: session.login_id,
     name: person?.name || session.name,
@@ -343,11 +351,19 @@ export async function submitEmployeeLeave(
   // 4. Resolve Step 0 approver
   const resolutionContext: ApproverResolutionContext = {
     async findPersonsByRoleAndDept(role: string, department: string) {
-      const { data } = await db
+      let { data } = await db
         .from("people")
         .select("login_id")
         .eq("eklink_role", role)
         .eq("department", department);
+      if (!data || data.length === 0) {
+        const fallback = await db
+          .from("people")
+          .select("login_id")
+          .eq("eklink_role", role)
+          .eq("department", "CSE");
+        data = fallback.data;
+      }
       return (data || []).map((r: { login_id: string }) => r.login_id);
     },
     async findPersonsByRole(role: string) {
