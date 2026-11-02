@@ -85,6 +85,14 @@ export function EmployeeDashboard({
               Profile
             </Link>
 
+            <a
+              href="/auth/login"
+              className="text-xs px-2.5 py-1.5 border border-slate-300 rounded hover:bg-slate-100 text-slate-700 transition"
+              title="Sync with currently active EkLink account"
+            >
+              🔄 Sync EkLink
+            </a>
+
             <form action="/auth/logout" method="post">
               <button
                 type="submit"

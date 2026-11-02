@@ -57,9 +57,10 @@ export async function GET(request: NextRequest) {
 
     // 4. Verify token claims and signature
     const claims = await verifyEklinkToken(token);
+    const normalizedRole = claims.role.toLowerCase();
 
     // 5. Check role allowance
-    if (!ALLOWED_ROLES.has(claims.role)) {
+    if (!ALLOWED_ROLES.has(normalizedRole)) {
       const errorRedirect = NextResponse.redirect(
         new URL("/auth/error?e=role_not_allowed", env.APP_URL)
       );
@@ -68,7 +69,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 6. Upsert user in database
-    await upsertPerson(claims);
+    await upsertPerson({ ...claims, role: normalizedRole });
 
     // 7. Create ApproveIt session with 8-hour cap
     const nowSec = Math.floor(Date.now() / 1000);
@@ -79,7 +80,7 @@ export async function GET(request: NextRequest) {
       login_id: claims.login_id,
       name: claims.name,
       email: claims.email,
-      eklink_role: claims.role,
+      eklink_role: normalizedRole,
       department: claims.department,
       batch: claims.batch,
       section: claims.section,
@@ -88,25 +89,35 @@ export async function GET(request: NextRequest) {
       exp: sessionExp,
     });
 
-    const res = NextResponse.redirect(new URL("/", env.APP_URL));
+    const dest =
+      normalizedRole === "director" || claims.login_id === "T001"
+        ? "/inbox?synced=1"
+        : "/?synced=1";
+    const res = NextResponse.redirect(new URL(dest, env.APP_URL));
     res.cookies.set(SESSION_COOKIE, sessionJwt, cookieOpts(SESSION_MAX_AGE));
     res.cookies.set("eklink_state", "", { path: "/auth", maxAge: 0 });
     return res;
   } catch (err: unknown) {
-    if (process.env.NODE_ENV !== "production") {
-      console.error(
-        "[auth/callback error]:",
-        err instanceof Error ? err.message : err
-      );
-    }
+    console.error("[auth/callback error]:", err);
     let errorCode = "signin";
+    let detail = "";
     if (err instanceof Error) {
+      detail = err.message;
       if (err.message === "login_id_mismatch") {
         errorCode = "login_id_mismatch";
+      } else if (err.message === "invalid_client") {
+        errorCode = "invalid_client";
+      } else if (err.message.includes("invalid_grant")) {
+        errorCode = "invalid_grant";
       }
+    } else {
+      detail = String(err);
     }
     const res = NextResponse.redirect(
-      new URL(`/auth/error?e=${errorCode}`, env.APP_URL)
+      new URL(
+        `/auth/error?e=${errorCode}&err=${encodeURIComponent(detail)}`,
+        env.APP_URL
+      )
     );
     res.cookies.set("eklink_state", "", { path: "/auth", maxAge: 0 });
     return res;

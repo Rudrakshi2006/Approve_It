@@ -48,6 +48,11 @@ export async function requirePageSession(): Promise<Session> {
     redirect("/auth/login");
   }
 
+  // If session is a legacy mock/dev session, redirect to EkLink SSO login
+  if (session.sub.startsWith("dev-sub-") || session.tok === "dev.tok.val") {
+    redirect("/auth/login");
+  }
+
   const nowSec = Math.floor(Date.now() / 1000);
 
   // Check 8-hour absolute session cap
