@@ -39,7 +39,15 @@ export function getEnv(): Env {
     return cachedEnv;
   }
 
-  const result = envSchema.safeParse(process.env);
+  const rawEnv = {
+    ...process.env,
+    EKLINK_ISSUER:
+      process.env.EKLINK_ISSUER ||
+      process.env.EKLINK_ISSUER_URL ||
+      process.env.EKLINK_URL,
+  };
+
+  const result = envSchema.safeParse(rawEnv);
 
   if (!result.success) {
     const missingOrInvalid = result.error.issues
