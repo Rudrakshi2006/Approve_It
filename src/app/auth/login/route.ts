@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
 import { getEnv } from "@/lib/env";
+import { NEXT_COOKIE, safeNextPath } from "@/lib/next-path";
 
 export async function GET(request: NextRequest) {
   const env = getEnv();
@@ -26,6 +27,18 @@ export async function GET(request: NextRequest) {
     path: "/auth",
     maxAge: 600, // 10 minutes
   });
+  const next = safeNextPath(searchParams.get("next"));
+  if (next) {
+    res.cookies.set(NEXT_COOKIE, next, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/auth",
+      maxAge: 600,
+    });
+  } else {
+    res.cookies.set(NEXT_COOKIE, "", { path: "/auth", maxAge: 0 });
+  }
   res.headers.set("Cache-Control", "no-store");
 
   return res;

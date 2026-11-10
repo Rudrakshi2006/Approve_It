@@ -8,6 +8,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   role_not_allowed: "Your role is not authorized to access ApproveIt. If you believe this is an error, please contact your administrator.",
   login_id_mismatch: "Your account credentials do not match our college records. Please contact the administrator.",
   access_denied: "Access was cancelled or denied by EkLink.",
+  account_inactive: "Your account is deactivated, so ApproveIt can no longer be used with it. If you think this is a mistake, please contact your administrator.",
+  forbidden_workflow_admin: "This page is only available to ApproveIt workflow administrators.",
 };
 
 export default async function AuthErrorPage({

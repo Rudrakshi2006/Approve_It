@@ -5,8 +5,14 @@ import {
   resolveApprover,
   type ApproverResolutionContext,
 } from "@/lib/workflow/resolve-approver";
+import {
+  contextForSource,
+  getApproverSource,
+  pinApproverSource,
+} from "@/lib/workflow/approver-source";
 import { calculateSuggestedSemester } from "@/lib/semester";
 import { createNotification } from "@/lib/notifications";
+import { isPersonActive } from "@/lib/sync/active";
 import { getTodayIST } from "@/lib/date";
 import type { ApplicantSnapshot } from "@/lib/repos/types";
 import type { Session } from "@/lib/session";
@@ -182,6 +188,14 @@ export async function submitApplication(
     if (facErr || !facultyPerson || (facultyPerson.eklink_role !== "faculty" && facultyPerson.eklink_role !== "hod")) {
       return { ok: false, error: "Selected approver is invalid or not a faculty member", status: 422 };
     }
+
+    if (!(await isPersonActive(input.class_teacher_login_id))) {
+      return {
+        ok: false,
+        error: "The selected approver's account is deactivated. Please choose another faculty member.",
+        status: 422,
+      };
+    }
   }
 
   // 3. Approver Resolution Context
@@ -224,6 +238,16 @@ export async function submitApplication(
     },
   };
 
+  // Approver source for this type ('legacy' default), pinned into the chain snapshot below.
+  const approverSource = await getApproverSource(db, input.type);
+  const activeContext = contextForSource(
+    approverSource,
+    resolutionContext,
+    db,
+    session.login_id,
+    session.department
+  );
+
   let initialApproverLoginId: string;
   try {
     initialApproverLoginId = await resolveApprover(
@@ -234,7 +258,7 @@ export async function submitApplication(
         applicantDepartment: session.department || "CSE",
         selectedApproverLoginId: input.class_teacher_login_id,
       },
-      resolutionContext
+      activeContext
     );
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Failed to resolve initial approver";
@@ -280,7 +304,7 @@ export async function submitApplication(
       class_teacher_login_id: input.class_teacher_login_id ?? null,
       payload,
       urgent: finalUrgent,
-      chain_snapshot: chain,
+      chain_snapshot: pinApproverSource(chain, approverSource),
       initial_approver_login_id: initialApproverLoginId,
     });
 

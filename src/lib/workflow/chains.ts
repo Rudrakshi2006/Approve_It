@@ -35,6 +35,8 @@ export const StepConfigSchema = z.object({
   comment_required_on_forward: z.boolean().optional(),
   attendance_required: z.boolean().optional(),
   decision_label: z.string().optional(),
+  // Pinned at submission in chain_snapshot (see workflow/approver-source.ts); absent = legacy.
+  approver_source: z.enum(["legacy", "eklink"]).optional(),
 });
 
 export type StepConfig = z.infer<typeof StepConfigSchema>;

@@ -2,7 +2,9 @@ import { timingSafeEqual } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
 import { exchangeCode, verifyEklinkToken } from "@/lib/eklink";
 import { getEnv } from "@/lib/env";
+import { NEXT_COOKIE, safeNextPath, withSynced } from "@/lib/next-path";
 import { upsertPerson } from "@/lib/people";
+import { invalidateActiveCache, isPersonActive } from "@/lib/sync/active";
 import {
   SESSION_COOKIE,
   SESSION_MAX_AGE,
@@ -71,6 +73,17 @@ export async function GET(request: NextRequest) {
     // 6. Upsert user in database
     await upsertPerson({ ...claims, role: normalizedRole });
 
+    // 6b. Refuse people deactivated in EkLink (mirrored people.is_active = false)
+    invalidateActiveCache(claims.login_id);
+    if (!(await isPersonActive(claims.login_id))) {
+      const inactiveRedirect = NextResponse.redirect(
+        new URL("/auth/error?e=account_inactive", env.APP_URL)
+      );
+      inactiveRedirect.cookies.set("eklink_state", "", { path: "/auth", maxAge: 0 });
+      inactiveRedirect.cookies.set(SESSION_COOKIE, "", { path: "/", maxAge: 0 });
+      return inactiveRedirect;
+    }
+
     // 7. Create ApproveIt session with 8-hour cap
     const nowSec = Math.floor(Date.now() / 1000);
     const sessionExp = nowSec + SESSION_MAX_AGE;
@@ -89,13 +102,17 @@ export async function GET(request: NextRequest) {
       exp: sessionExp,
     });
 
-    const dest =
-      normalizedRole === "director" || claims.login_id === "T001"
+    // Back to the page that was asked for (e.g. /admin/sync), else the default landing.
+    const requested = safeNextPath(request.cookies.get(NEXT_COOKIE)?.value);
+    const dest = requested
+      ? withSynced(requested)
+      : normalizedRole === "director" || claims.login_id === "T001"
         ? "/inbox?synced=1"
         : "/?synced=1";
     const res = NextResponse.redirect(new URL(dest, env.APP_URL));
     res.cookies.set(SESSION_COOKIE, sessionJwt, cookieOpts(SESSION_MAX_AGE));
     res.cookies.set("eklink_state", "", { path: "/auth", maxAge: 0 });
+    res.cookies.set(NEXT_COOKIE, "", { path: "/auth", maxAge: 0 });
     return res;
   } catch (err: unknown) {
     console.error("[auth/callback error]:", err);

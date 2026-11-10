@@ -1,25 +1,30 @@
 import { redirect } from "next/navigation";
-import { requirePageSession } from "@/lib/auth";
+import { isSyncAdmin, requirePageSession } from "@/lib/auth";
 import { getDb } from "@/lib/db";
+import { APPROVER_SOURCE_KEY, normalizeSourceMap } from "@/lib/workflow/approver-source";
 import { AdminNav } from "../AdminNav";
 import { SettingsClient } from "./SettingsClient";
+import { ApproverSourceClient } from "./ApproverSourceClient";
 
 export default async function AdminSettingsPage() {
   const session = await requirePageSession();
   const db = getDb();
 
-  const { data: adminRole } = await db
-    .from("app_roles")
-    .select("app_role")
-    .eq("login_id", session.login_id)
-    .eq("app_role", "admin")
-    .maybeSingle();
-
-  if (!adminRole) {
+  // ApproveIt "admin" / workflow_admin designation, or an EkLink platform admin.
+  if (!(await isSyncAdmin(session))) {
     redirect("/inbox");
   }
 
-  const { data: settingsRows } = await db.from("app_settings").select("key, value");
+  const [{ data: settingsRows }, { data: typeRows }, deptRes] = await Promise.all([
+    db.from("app_settings").select("key, value"),
+    db.from("application_types").select("key, name").order("key"),
+    db
+      .from("directory_units")
+      .select("org_code, institute_code, code, name")
+      .eq("level", "department")
+      .eq("is_active", true)
+      .order("path"),
+  ]);
 
   const settingsMap: Record<string, unknown> = {};
   for (const row of settingsRows || []) {
@@ -41,6 +46,19 @@ export default async function AdminSettingsPage() {
         <AdminNav current="settings" />
 
         <SettingsClient initialSettings={settingsMap} />
+
+        <ApproverSourceClient
+          types={(typeRows ?? []) as Array<{ key: string; name: string }>}
+          initialSources={normalizeSourceMap(settingsMap[APPROVER_SOURCE_KEY])}
+          departments={
+            (deptRes.error ? [] : (deptRes.data ?? [])) as Array<{
+              org_code: string;
+              institute_code: string | null;
+              code: string;
+              name: string;
+            }>
+          }
+        />
       </div>
     </div>
   );

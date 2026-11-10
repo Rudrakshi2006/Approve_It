@@ -90,7 +90,12 @@ export function PeopleClient() {
         return;
       }
 
-      setSuccess(`Successfully imported / updated ${data.imported_count} people records! (eklink_sub, semester, and signature_path preserved)`);
+      setSuccess(
+        `Successfully imported / updated ${data.imported_count} people records! (eklink_sub, semester, and signature_path preserved)` +
+          (data.skipped_eklink_managed
+            ? ` ${data.skipped_eklink_managed} EkLink-managed people were skipped (edit them in EkLink).`
+            : "")
+      );
       setPreviewData(null);
       setCsvContent("");
       router.refresh();

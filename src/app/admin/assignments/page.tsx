@@ -3,6 +3,7 @@ import { requirePageWorkflowAdmin } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { AdminNav } from "../AdminNav";
 import { AssignmentsClient } from "./AssignmentsClient";
+import { EklinkJobs } from "./EklinkJobs";
 
 export default async function AdminAssignmentsPage() {
   const session = await requirePageWorkflowAdmin();
@@ -59,6 +60,8 @@ export default async function AdminAssignmentsPage() {
           initialRoles={rolesRes.data || []}
           people={peopleRes.data || []}
         />
+
+        <EklinkJobs />
       </main>
     </div>
   );

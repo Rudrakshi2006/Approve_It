@@ -36,7 +36,20 @@ export async function POST(request: NextRequest) {
 
   // Execution mode: Safe Upsert without touching eklink_sub, semester, signature_path
   const db = getDb();
-  const recordsToUpsert = parsed.rows.map((r) => ({
+
+  // People linked to EkLink are managed in EkLink (sync): the CSV never overwrites them.
+  const linked = new Set<string>();
+  const ids = parsed.rows.map((r) => r.login_id);
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data: linkedRows } = await db
+      .from("people")
+      .select("login_id")
+      .in("login_id", ids.slice(i, i + 200))
+      .not("eklink_sub", "is", null);
+    for (const r of (linkedRows ?? []) as Array<{ login_id: string }>) linked.add(r.login_id);
+  }
+
+  const recordsToUpsert = parsed.rows.filter((r) => !linked.has(r.login_id)).map((r) => ({
     login_id: r.login_id,
     name: r.name,
     email: r.college_email,
@@ -44,16 +57,19 @@ export async function POST(request: NextRequest) {
     department: r.department,
   }));
 
-  const { error: upsertErr } = await db
-    .from("people")
-    .upsert(recordsToUpsert, { onConflict: "login_id" });
+  if (recordsToUpsert.length > 0) {
+    const { error: upsertErr } = await db
+      .from("people")
+      .upsert(recordsToUpsert, { onConflict: "login_id" });
 
-  if (upsertErr) {
-    return NextResponse.json({ error: upsertErr.message }, { status: 500 });
+    if (upsertErr) {
+      return NextResponse.json({ error: upsertErr.message }, { status: 500 });
+    }
   }
 
   return NextResponse.json({
     ok: true,
     imported_count: recordsToUpsert.length,
+    skipped_eklink_managed: linked.size,
   });
 }

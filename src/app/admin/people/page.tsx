@@ -2,9 +2,15 @@ import Link from "next/link";
 import { requirePageWorkflowAdmin } from "@/lib/auth";
 import { AdminNav } from "../AdminNav";
 import { PeopleClient } from "./PeopleClient";
+import { PeopleDirectory, type PeopleFilters } from "./PeopleDirectory";
 
-export default async function AdminPeoplePage() {
+export default async function AdminPeoplePage({
+  searchParams,
+}: {
+  searchParams: Promise<PeopleFilters>;
+}) {
   const session = await requirePageWorkflowAdmin();
+  const filters = await searchParams;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-16">
@@ -45,6 +51,8 @@ export default async function AdminPeoplePage() {
         </div>
 
         <AdminNav current="people" />
+
+        <PeopleDirectory filters={filters} />
 
         <PeopleClient />
       </main>

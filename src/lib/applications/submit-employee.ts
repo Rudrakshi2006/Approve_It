@@ -1,10 +1,16 @@
 import { getDb } from "@/lib/db";
 import { createAndSubmitApplication } from "@/lib/repos/applications";
 import { parseChain } from "@/lib/workflow/chains";
+import { withoutSelfApproval } from "@/lib/workflow/self-approval";
 import {
   resolveApprover,
   type ApproverResolutionContext,
 } from "@/lib/workflow/resolve-approver";
+import {
+  contextForSource,
+  getApproverSource,
+  pinApproverSource,
+} from "@/lib/workflow/approver-source";
 import { createNotification } from "@/lib/notifications";
 import { parseDDMMYYYYtoISO, getTodayIST } from "@/lib/dates";
 import { previewLeave } from "@/lib/leave/service";
@@ -168,16 +174,41 @@ export async function submitEmployeeGeneral(
     },
   };
 
+  // Approver source for this type ('legacy' default), pinned into the chain snapshot below.
+  const approverSource = await getApproverSource(db, appType);
+  const activeContext = contextForSource(
+    approverSource,
+    resolutionContext,
+    db,
+    session.login_id,
+    applicantDepartment
+  );
+
+  // Nobody approves their own request: drop steps that would land on the applicant
+  // from this application's chain (e.g. the SIT Staff head -> straight to the Director).
+  const selfFree = await withoutSelfApproval(chain, session.login_id, (step) =>
+    resolveApprover(
+      step.resolver,
+      { applicationType: appType, stepKey: step.step_key, applicantDepartment },
+      activeContext
+    )
+  );
+  if (!selfFree.ok) {
+    return { ok: false, error: selfFree.error, status: 422 };
+  }
+  const effectiveChain = selfFree.chain;
+  const effectiveFirstStep = effectiveChain[0];
+
   let initialApprover: string;
   try {
     initialApprover = await resolveApprover(
-      firstStep.resolver,
+      effectiveFirstStep.resolver,
       {
         applicationType: appType,
-        stepKey: firstStep.step_key,
+        stepKey: effectiveFirstStep.step_key,
         applicantDepartment,
       },
-      resolutionContext
+      activeContext
     );
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Failed to resolve initial approver";
@@ -200,7 +231,7 @@ export async function submitEmployeeGeneral(
     applicant_snapshot: applicantSnapshot,
     payload,
     urgent: input.urgent ?? false,
-    chain_snapshot: chain,
+    chain_snapshot: pinApproverSource(effectiveChain, approverSource),
     initial_approver_login_id: initialApprover,
   });
 
@@ -396,16 +427,41 @@ export async function submitEmployeeLeave(
     },
   };
 
+  // Approver source for this type ('legacy' default), pinned into the chain snapshot below.
+  const approverSource = await getApproverSource(db, appType);
+  const activeContext = contextForSource(
+    approverSource,
+    resolutionContext,
+    db,
+    session.login_id,
+    applicantDepartment
+  );
+
+  // Nobody approves their own request: drop steps that would land on the applicant
+  // from this application's chain (e.g. the SIT Staff head -> straight to the Director).
+  const selfFree = await withoutSelfApproval(chain, session.login_id, (step) =>
+    resolveApprover(
+      step.resolver,
+      { applicationType: appType, stepKey: step.step_key, applicantDepartment },
+      activeContext
+    )
+  );
+  if (!selfFree.ok) {
+    return { ok: false, error: selfFree.error, status: 422 };
+  }
+  const effectiveChain = selfFree.chain;
+  const effectiveFirstStep = effectiveChain[0];
+
   let initialApprover: string;
   try {
     initialApprover = await resolveApprover(
-      firstStep.resolver,
+      effectiveFirstStep.resolver,
       {
         applicationType: appType,
-        stepKey: firstStep.step_key,
+        stepKey: effectiveFirstStep.step_key,
         applicantDepartment,
       },
-      resolutionContext
+      activeContext
     );
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Failed to resolve initial approver";
@@ -441,7 +497,7 @@ export async function submitEmployeeLeave(
     applicant_login_id: session.login_id,
     applicant_snapshot: applicantSnapshot,
     payload,
-    chain_snapshot: chain,
+    chain_snapshot: pinApproverSource(effectiveChain, approverSource),
     initial_approver_login_id: initialApprover,
   });
 
