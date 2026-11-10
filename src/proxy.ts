@@ -16,20 +16,29 @@ export function proxy(request: NextRequest) {
   // detect top-level document navigation and route through /auth/login to sync
   // with the currently active EkLink persona.
   // The 'synced' query param marks the landing request right after callback, preventing loops.
+  // On localhost, EkLink (:3000) -> ApproveIt (:3002) is "same-site", not "cross-site".
+  const fetchSite = request.headers.get("sec-fetch-site");
   const isCrossSiteDocNav =
-    request.headers.get("sec-fetch-site") === "cross-site" &&
+    (fetchSite === "cross-site" || fetchSite === "same-site") &&
     request.headers.get("sec-fetch-dest") === "document" &&
     request.method === "GET" &&
     !searchParams.has("synced") &&
     !searchParams.has("_rsc");
 
+  // Remember the page that was asked for, so the user lands back on it after
+  // the EkLink round trip (validated again in /auth/login and /auth/callback).
+  const loginUrl = new URL("/auth/login", request.url);
+  if (pathname !== "/") {
+    loginUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
+  }
+
   if (isCrossSiteDocNav) {
-    return NextResponse.redirect(new URL("/auth/login", request.url));
+    return NextResponse.redirect(loginUrl);
   }
 
   // If user has no active session, route to /auth/login
   if (!request.cookies.get("approveit_session")) {
-    return NextResponse.redirect(new URL("/auth/login", request.url));
+    return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.next();
