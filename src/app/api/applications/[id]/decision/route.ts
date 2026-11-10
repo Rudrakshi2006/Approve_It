@@ -12,6 +12,10 @@ import {
   resolveApprover,
   type ApproverResolutionContext,
 } from "@/lib/workflow/resolve-approver";
+import {
+  contextForSource,
+  pinnedApproverSource,
+} from "@/lib/workflow/approver-source";
 import { generateVerificationId } from "@/lib/stamp/verification-id";
 import { createNotification } from "@/lib/notifications";
 import { executeLeaveApprovalDeduction } from "@/lib/leave/service";
@@ -148,7 +152,14 @@ export async function POST(
           applicantDepartment: app.applicant_snapshot.department,
           selectedApproverLoginId: app.class_teacher_login_id,
         },
-        resolutionContext
+        // Source pinned at submission: in-flight applications are never re-routed.
+        contextForSource(
+          pinnedApproverSource(app.chain_snapshot),
+          resolutionContext,
+          db,
+          app.applicant_login_id,
+          app.applicant_snapshot.department
+        )
       );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Approver resolution failed";
