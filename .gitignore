@@ -52,3 +52,6 @@ yarn-error.log*
 *.xlsx
 *.xls
 private_data/
+
+# Database backups (step 5b test-account removal, etc.)
+/backups/

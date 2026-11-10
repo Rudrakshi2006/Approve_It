@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "seed:people": "tsx --env-file=.env.local scripts/seed-people.ts",
-    "seed:phase7": "tsx --env-file=.env.local scripts/seed-phase7.ts"
+    "seed:phase7": "tsx --env-file=.env.local scripts/seed-phase7.ts",
+    "remove:test-accounts": "tsx scripts/remove-test-accounts.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
