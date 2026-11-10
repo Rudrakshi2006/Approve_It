@@ -3,7 +3,8 @@ import { type NextRequest, NextResponse } from "next/server";
 // Routes that don't redirect to /auth/login at proxy level:
 // - /auth, /_next, /favicon.ico: public assets & auth endpoints
 // - /api: API routes handle their own auth & return 401/403 JSON via requireApiSession
-const PUBLIC = ["/auth", "/_next", "/favicon.ico", "/api"];
+// - /api/sync: EkLink push endpoint; the signed JWT body is the auth (no cookie/session)
+const PUBLIC = ["/auth", "/_next", "/favicon.ico", "/api/sync", "/api"];
 
 export function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;

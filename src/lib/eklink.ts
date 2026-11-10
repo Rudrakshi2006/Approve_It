@@ -18,6 +18,11 @@ export type EklinkClaims = {
 // Default JWKS resolver created lazily
 let defaultJWKS: JWTVerifyGetKey | null = null;
 
+/** Shared EkLink JWKS resolver ({EKLINK_URL}/.well-known/jwks.json); also used by sync push verification. */
+export function getEklinkJwks(): JWTVerifyGetKey {
+  return getDefaultJWKS();
+}
+
 function getDefaultJWKS(): JWTVerifyGetKey {
   if (!defaultJWKS) {
     const env = getEnv();
