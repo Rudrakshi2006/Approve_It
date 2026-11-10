@@ -7,6 +7,7 @@ import {
 } from "@/lib/workflow/resolve-approver";
 import { calculateSuggestedSemester } from "@/lib/semester";
 import { createNotification } from "@/lib/notifications";
+import { isPersonActive } from "@/lib/sync/active";
 import { getTodayIST } from "@/lib/date";
 import type { ApplicantSnapshot } from "@/lib/repos/types";
 import type { Session } from "@/lib/session";
@@ -181,6 +182,14 @@ export async function submitApplication(
 
     if (facErr || !facultyPerson || (facultyPerson.eklink_role !== "faculty" && facultyPerson.eklink_role !== "hod")) {
       return { ok: false, error: "Selected approver is invalid or not a faculty member", status: 422 };
+    }
+
+    if (!(await isPersonActive(input.class_teacher_login_id))) {
+      return {
+        ok: false,
+        error: "The selected approver's account is deactivated. Please choose another faculty member.",
+        status: 422,
+      };
     }
   }
 

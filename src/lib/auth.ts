@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { NextResponse } from "next/server";
 import { getDb } from "./db";
+import { isPersonActive } from "./sync/active";
 import {
   SESSION_COOKIE,
   readSession,
@@ -71,6 +72,11 @@ export async function requirePageSession(): Promise<Session> {
     redirect("/auth/error?e=role_not_allowed");
   }
 
+  // Deactivated in EkLink (people.is_active = false): the session stops working immediately.
+  if (!(await isPersonActive(session.login_id))) {
+    redirect("/auth/error?e=account_inactive");
+  }
+
   return session;
 }
 
@@ -120,6 +126,17 @@ export async function requireApiSession(rawCookie?: string): Promise<
       errorResponse: NextResponse.json(
         { error: "forbidden", message: "Role not authorized" },
         { status: 403 }
+      ),
+    };
+  }
+
+  // Deactivated in EkLink (people.is_active = false): the session stops working immediately.
+  if (!(await isPersonActive(session.login_id))) {
+    return {
+      session: null,
+      errorResponse: NextResponse.json(
+        { error: "unauthorized", message: "Account is deactivated" },
+        { status: 401 }
       ),
     };
   }
