@@ -166,8 +166,8 @@ export async function getAppRoles(loginId: string): Promise<string[]> {
  */
 export async function requirePageWorkflowAdmin(): Promise<Session> {
   const session = await requirePageSession();
-  const roles = await getAppRoles(session.login_id);
-  if (!roles.includes("workflow_admin")) {
+  // ApproveIt workflow_admin, or an EkLink super / org / institute admin.
+  if (!(await isSyncAdmin(session))) {
     redirect("/auth/error?e=forbidden_workflow_admin");
   }
   return session;
@@ -185,12 +185,11 @@ export async function requireApiWorkflowAdmin(rawCookie?: string): Promise<
     return auth;
   }
 
-  const roles = await getAppRoles(auth.session.login_id);
-  if (!roles.includes("workflow_admin")) {
+  if (!(await isSyncAdmin(auth.session))) {
     return {
       session: null,
       errorResponse: NextResponse.json(
-        { error: "forbidden", message: "workflow_admin designation required" },
+        { error: "forbidden", message: "workflow_admin or EkLink platform admin required" },
         { status: 403 }
       ),
     };
@@ -200,3 +199,56 @@ export async function requireApiWorkflowAdmin(rawCookie?: string): Promise<
 }
 
 export const requireAdminSession = requireApiWorkflowAdmin;
+
+/** EkLink platform roles that may run sync / see sync admin pages (besides workflow_admin). */
+export const PLATFORM_ADMIN_ROLES = ["super_admin", "org_admin", "institute_admin"] as const;
+
+/**
+ * ApproveIt administration (every /admin page and API): ApproveIt workflow_admin
+ * (or the legacy "admin" designation) or an EkLink super / org / institute admin
+ * (people.platform_role). EkLink's legacy role "admin" alone is NOT enough: it is
+ * also given to department admins, who must not run the whole of ApproveIt.
+ */
+export async function isSyncAdmin(session: Session): Promise<boolean> {
+  const roles = await getAppRoles(session.login_id);
+  if (roles.includes("workflow_admin") || roles.includes("admin")) return true;
+  try {
+    const { data, error } = await getDb()
+      .from("people")
+      .select("platform_role")
+      .eq("login_id", session.login_id)
+      .maybeSingle();
+    if (error || !data) return false;
+    return (PLATFORM_ADMIN_ROLES as readonly string[]).includes(
+      String((data as { platform_role?: string | null }).platform_role ?? "")
+    );
+  } catch {
+    return false;
+  }
+}
+
+export async function requireApiSyncAdmin(rawCookie?: string): Promise<
+  | { session: Session; errorResponse: null }
+  | { session: null; errorResponse: NextResponse }
+> {
+  const auth = await requireApiSession(rawCookie);
+  if (auth.errorResponse) return auth;
+  if (!(await isSyncAdmin(auth.session))) {
+    return {
+      session: null,
+      errorResponse: NextResponse.json(
+        { error: "forbidden", message: "workflow_admin or EkLink platform admin required" },
+        { status: 403 }
+      ),
+    };
+  }
+  return auth;
+}
+
+export async function requirePageSyncAdmin(): Promise<Session> {
+  const session = await requirePageSession();
+  if (!(await isSyncAdmin(session))) {
+    redirect("/auth/error?e=forbidden_workflow_admin");
+  }
+  return session;
+}

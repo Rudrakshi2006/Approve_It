@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requirePageSession } from "@/lib/auth";
+import { isSyncAdmin, requirePageSession } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { AdminNav } from "../AdminNav";
 import { SettingsClient } from "./SettingsClient";
@@ -8,14 +8,8 @@ export default async function AdminSettingsPage() {
   const session = await requirePageSession();
   const db = getDb();
 
-  const { data: adminRole } = await db
-    .from("app_roles")
-    .select("app_role")
-    .eq("login_id", session.login_id)
-    .eq("app_role", "admin")
-    .maybeSingle();
-
-  if (!adminRole) {
+  // ApproveIt "admin" / workflow_admin designation, or an EkLink platform admin.
+  if (!(await isSyncAdmin(session))) {
     redirect("/inbox");
   }
 

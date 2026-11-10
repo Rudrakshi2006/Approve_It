@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requirePageSession } from "@/lib/auth";
+import { isSyncAdmin, requirePageSession } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { AdminNav } from "../AdminNav";
 import { LeaveBalancesClient } from "./LeaveBalancesClient";
@@ -9,15 +9,9 @@ export default async function AdminLeaveBalancesPage() {
   const session = await requirePageSession();
   const db = getDb();
 
-  // Check admin role
-  const { data: adminRole } = await db
-    .from("app_roles")
-    .select("app_role")
-    .eq("login_id", session.login_id)
-    .eq("app_role", "admin")
-    .maybeSingle();
-
-  if (!adminRole) {
+  // Same admins as every /admin page: ApproveIt workflow_admin or an EkLink
+  // super / org / institute admin (the old "admin" designation is still accepted).
+  if (!(await isSyncAdmin(session))) {
     redirect("/inbox");
   }
 

@@ -3,7 +3,14 @@ import Link from "next/link";
 export function AdminNav({
   current,
 }: {
-  current: "assignments" | "people" | "types" | "leave-balances" | "holidays" | "settings";
+  current:
+    | "assignments"
+    | "people"
+    | "types"
+    | "leave-balances"
+    | "holidays"
+    | "settings"
+    | "sync";
 }) {
   return (
     <div className="flex flex-wrap border-b border-slate-200 mb-6 gap-2">
@@ -66,6 +73,16 @@ export function AdminNav({
         }`}
       >
         App Settings
+      </Link>
+      <Link
+        href="/admin/sync"
+        className={`px-3 py-2 border-b-2 font-semibold text-xs sm:text-sm transition ${
+          current === "sync"
+            ? "border-slate-900 text-slate-900"
+            : "border-transparent text-slate-500 hover:text-slate-700"
+        }`}
+      >
+        EkLink Sync
       </Link>
     </div>
   );
